@@ -31,7 +31,8 @@ const char* middlePartAtom = "   1  LIG11   ";
 const std::string molecule = "mol_";
 const std::string ext = ".mol2";
 
-std::string to_string(short value)
+template <class T>
+std::string to_string(T value)
 {
     std::stringstream ss;
     ss << value;
@@ -68,12 +69,22 @@ namespace core
                 if (++min > 59)
                 {
                     min = 0;
-                    ++hour;
+                    if (++hour > 23)
+                        hour = 0;
                 }
+
             }
         }
     };
     
+    std::string getExt(const std::string& path)
+    {
+        size_t pose = path.find_last_of(".");
+        if (std::string::npos == pose)
+            return path;
+        return std::string(path.begin() + pose + 1, path.end());
+    }
+
     bool isFileExists(const char* path)
     {
         struct stat buffer;   
@@ -93,7 +104,7 @@ namespace core
                 if (strncmp(ent->d_name, ".", 1) == 0 ||
                     strncmp(ent->d_name, "..", 2) == 0)
                     continue;
-                printf ("%s\n", ent->d_name);
+                //printf ("%s\n", ent->d_name);
                 files.push_back(std::string(ent->d_name));
             }
             closedir (dir);
@@ -105,6 +116,14 @@ namespace core
           perror ("");
           return false;
         }
+    }
+
+    std::string name(const std::string& path)
+    {
+        size_t pose = path.find_last_of("\\/");
+        if (std::string::npos == pose)
+            return path;
+        return std::string(path.begin() + pose + 1, path.end());
     }
 };
 
@@ -308,100 +327,102 @@ void fillDistancesAndBonds(const std::vector<Atom>& atoms, std::ofstream& ofs)
         matrixBonds.push_back(tmp);
     
     
+    std::map<std::pair<std::string,int>, int> binding;     // respond to current binding in molecule
+
     for (int i = 0; i < size; ++i)
     {
+        std::string s1 = atoms[i].mName;
         std::map<float, std::pair<std::string, int> > distances; // to another atoms
         for (int j = i + 1; j < size; ++j)
         {
-            std::string s1 = atoms[i].mName;
             std::string s2 = atoms[j].mName;
-            std::string out = mendel[s1] < mendel[s2] ? s1 + s2 : s2 + s1;
             
-            Vector3D res = atoms[i].mCoord - atoms[j].mCoord;
-            float magnitude = Magnitude(res);
-            magnitude = int(1000 * magnitude);  
-            magnitude /= 1000;
-            
-            distances[magnitude] = std::make_pair(out, j);
+            float magnitude = int(1000 * Magnitude(atoms[i].mCoord - atoms[j].mCoord)) / 1000.f;
+            distances[magnitude] = std::make_pair(s2, j);
             
             switch (mendel[s1] * mendel[s2])
             {
-            // HO
-            case 16:  
-            {
-                std::ofstream outfile(resFile_HO.c_str(), std::ios_base::app);
-                outfile << magnitude << std::endl;
-                outfile.close();
-            }
-            // HCa
-            case 40:
-            {
-                std::ofstream outfile(resFile_HCa.c_str(), std::ios_base::app);
-                outfile << magnitude << std::endl;
-                outfile.close();
-            }
-            // HP
-            case 31:
-            {
-                std::ofstream outfile(resFile_HP.c_str(), std::ios_base::app);
-                outfile << magnitude << std::endl;
-                outfile.close();
-            }
-            // OO
-            case 256:
-            {
-                std::ofstream outfile(resFile_OO.c_str(), std::ios_base::app);
-                outfile << magnitude << std::endl;
-                outfile.close();
-            }
-            // OP
-            case 496:
-            {
-                std::ofstream outfile(resFile_OP.c_str(), std::ios_base::app);
-                outfile << magnitude << std::endl;
-                outfile.close();
-            }
-            // OCa
-            case 640:
-            {
-                std::ofstream outfile(resFile_OCa.c_str(), std::ios_base::app);
-                outfile << magnitude << std::endl;
-                outfile.close();
-            }
-            // PP
-            case 961:
-            {
-                std::ofstream outfile(resFile_PP.c_str(), std::ios_base::app);
-                outfile << magnitude << std::endl;
-                outfile.close();
-            }
-            // PCa
-            case 1240:
-            {
-                std::ofstream outfile(resFile_PCa.c_str(), std::ios_base::app);
-                outfile << magnitude << std::endl;
-                outfile.close();
-            }
-            // CaCa
-            case 1600:
-            {
-                std::ofstream outfile(resFile_CaCa.c_str(), std::ios_base::app);
-                outfile << magnitude << std::endl;
-                outfile.close();
-            }
+                // HO = 1 * 16
+                case 16:
+                {
+                    std::ofstream outfile(resFile_HO.c_str(), std::ios_base::app);
+                    outfile << magnitude << std::endl;
+                    outfile.close();
+                }
+                // HCa = 1 * 40
+                case 40:
+                {
+                    std::ofstream outfile(resFile_HCa.c_str(), std::ios_base::app);
+                    outfile << magnitude << std::endl;
+                    outfile.close();
+                }
+                // HP
+                case 31:
+                {
+                    std::ofstream outfile(resFile_HP.c_str(), std::ios_base::app);
+                    outfile << magnitude << std::endl;
+                    outfile.close();
+                }
+                // OO
+                case 256:
+                {
+                    std::ofstream outfile(resFile_OO.c_str(), std::ios_base::app);
+                    outfile << magnitude << std::endl;
+                    outfile.close();
+                }
+                // OP
+                case 496:
+                {
+                    std::ofstream outfile(resFile_OP.c_str(), std::ios_base::app);
+                    outfile << magnitude << std::endl;
+                    outfile.close();
+                }
+                // OCa
+                case 640:
+                {
+                    std::ofstream outfile(resFile_OCa.c_str(), std::ios_base::app);
+                    outfile << magnitude << std::endl;
+                    outfile.close();
+                }
+                // PP
+                case 961:
+                {
+                    std::ofstream outfile(resFile_PP.c_str(), std::ios_base::app);
+                    outfile << magnitude << std::endl;
+                    outfile.close();
+                }
+                // PCa
+                case 1240:
+                {
+                    std::ofstream outfile(resFile_PCa.c_str(), std::ios_base::app);
+                    outfile << magnitude << std::endl;
+                    outfile.close();
+                }
+                // CaCa
+                case 1600:
+                {
+                    std::ofstream outfile(resFile_CaCa.c_str(), std::ios_base::app);
+                    outfile << magnitude << std::endl;
+                    outfile.close();
+                }
             }
         }
         
-        int valence = valences[atoms[i].mName];
-        
-        int v = 0;
+        int v = 0,
+            valence = valences[atoms[i].mName];
         for (std::map<float, std::pair<std::string, int> >::iterator it = distances.begin();
              it != distances.end() && v < valence; ++it, ++v)
         {
-            if (!matrixBonds[i][it->second.second] && !matrixBonds[it->second.second][i])
+            std::pair<std::string, int> endAtom = it->second;
+            if (!matrixBonds[i][endAtom.second] && !matrixBonds[endAtom.second][i] &&
+                binding[std::make_pair(s1, i)] < valences[s1] &&
+                binding[endAtom] < valences[endAtom.first])
             {
-                ++bonds[it->second.first];
-                matrixBonds[i][it->second.second] = matrixBonds[it->second.second][i] = 1;
+                ++binding[std::make_pair(s1, i)];
+                ++binding[endAtom];
+                std::string bond = mendel[s1] < mendel[endAtom.first] ? s1 + endAtom.first : endAtom.first + s1;
+                ++bonds[bond];
+                matrixBonds[i][endAtom.second] = matrixBonds[endAtom.second][i] = 1;
             }
         }
     }
@@ -409,7 +430,6 @@ void fillDistancesAndBonds(const std::vector<Atom>& atoms, std::ofstream& ofs)
     for (std::map<std::string, int>::iterator it = bonds.begin();
          it != bonds.end(); ++it)
         ofs << it->first << "\t" << it->second << std::endl;
-   
 }
 
 
@@ -423,55 +443,53 @@ int main(int argc, char* argv[])
             argFile = param + 4;
     }
     
+    std::string resDir = argFile + "/Results/";
     fillMendelAndValences();
-    if (!argFile.empty())
+    std::vector<std::string> files;
+    if (!argFile.empty() && core::listFiles(argFile, files))
     {
-        std::vector<std::string> files;
-        core::listFiles(argFile, files);
-        
         for (int i = 0, size = files.size(); i < size; ++i)
         {
-            const std::string path = argFile + "/" + files[i];
-            FILE* inFile = fopen(path.c_str(), "r");
-            if (inFile)
+            if (0 == core::getExt(files[i]).compare("xyz"))
             {
-                int numAtoms = 0;
-                fscanf(inFile, "%d", &numAtoms);
-                
-                std::vector<Atom> atoms;
-                
-                for (int j = 0; j < numAtoms; ++j)
+                const std::string path = argFile + "/" + files[i];
+                FILE* inFile = fopen(path.c_str(), "r");
+                if (inFile)
                 {
-                    Atom atom;
-                    char name[4];
-                    fscanf(inFile, "%s", &name);
-                    atom.mName = std::string(name);
-                    fscanf(inFile, "%f %f %f", &atom.mCoord.x, &atom.mCoord.y, &atom.mCoord.z);
-                    
-                    atoms.push_back(atom);
+                    int numAtoms = 0;
+                    fscanf(inFile, "%d", &numAtoms);
+
+                    std::vector<Atom> atoms;
+
+                    for (int j = 0; j < numAtoms; ++j)
+                    {
+                        Atom atom;
+                        char name[4]; // max name of atom have 4 symbols
+                        fscanf(inFile, "%s", &name);
+                        atom.mName = std::string(name);
+                        fscanf(inFile, "%f %f %f", &atom.mCoord.x, &atom.mCoord.y, &atom.mCoord.z);
+
+                        atoms.push_back(atom);
+                    }
+
+                    std::ofstream ofs((resDir + files[i] + ".parsed").c_str());
+                    ofs << path << std::endl;
+
+                    fillDistancesAndBonds(atoms, ofs);
+
+                    ofs << "------------------------------------------\n";
+                    ofs.close();
                 }
-                
-                std::ofstream ofs((path + "parsed").c_str());
-                ofs << path << std::endl;
-                
-                fillDistancesAndBonds(atoms, ofs);
-                
-                ofs.close();
+
+                fclose(inFile);
             }
-            
-            fclose(inFile);
         }
-        
         
         core::time t;
         getTime(t);
-        ++t;
-        ++t;
 
 //        bool res = parseMolgen(argFile);
 //        std::string time = getTime();
-
-        //printf("Current time = %s", currentDateTime().c_str());
     }
 
     return 0;
