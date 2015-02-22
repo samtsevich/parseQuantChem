@@ -38,7 +38,7 @@ std::string to_string(T value)
     ss << value;
     std::string str;
     ss >> str;
-    return str; 
+    return str;
 }
 
 namespace core
@@ -76,7 +76,7 @@ namespace core
             }
         }
     };
-    
+
     std::string getExt(const std::string& path)
     {
         size_t pose = path.find_last_of(".");
@@ -87,10 +87,23 @@ namespace core
 
     bool isFileExists(const char* path)
     {
-        struct stat buffer;   
+        struct stat buffer;
         return (stat (path, &buffer) == 0); 
     }
-    
+
+    bool isDir(const char* path)
+    {
+        struct stat sb;
+        return stat(path, &sb) == 0 && S_ISDIR(sb.st_mode);
+    }
+
+    bool mkDir(const char* path)
+    {
+        return !isDir(path) ?
+            mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) :
+            false;
+    }
+
     bool listFiles(const std::string& path, std::vector<std::string>& files)
     {
         files.clear();
@@ -104,7 +117,6 @@ namespace core
                 if (strncmp(ent->d_name, ".", 1) == 0 ||
                     strncmp(ent->d_name, "..", 2) == 0)
                     continue;
-                //printf ("%s\n", ent->d_name);
                 files.push_back(std::string(ent->d_name));
             }
             closedir (dir);
@@ -118,12 +130,22 @@ namespace core
         }
     }
 
-    std::string name(const std::string& path)
+    std::string nameWithExt(const std::string& path)
     {
         size_t pose = path.find_last_of("\\/");
         if (std::string::npos == pose)
             return path;
         return std::string(path.begin() + pose + 1, path.end());
+    }
+
+    std::string name(const std::string& path)
+    {
+        size_t pose1 = path.find_last_of("\\/");
+        size_t pose2 = path.find_last_of(".");
+        if (std::string::npos == pose1)
+            return (std::string::npos == pose2) ? path : std::string(path.begin(), path.begin() + pose2);
+
+        return std::string(path.begin() + pose1 + 1, path.begin() + pose2);
     }
 };
 
@@ -191,7 +213,6 @@ bool parseMolgen(const std::string& path)
                 timeStr = t.timeString();
             }
             std::string path = molecule + timeStr + ext;
-
 
             std::ofstream ofs(path.c_str());
             ofs << mol2Header1;
@@ -264,8 +285,8 @@ void fillMendelAndValences()
     valences["O"] = 2;
     valences["P"] = 5;
     valences["Ca"] = 2;
-    
-    
+
+
     std::ofstream outfile(resFile_HO.c_str());
     outfile << resFile_HO << std::endl;
     outfile.close();
@@ -274,9 +295,9 @@ void fillMendelAndValences()
     outfile1 << resFile_HCa << std::endl;
     outfile1.close();
 
-    std::ofstream outfile2(resFile_HO.c_str());
-    outfile2 << resFile_HO << std::endl;
-    outfile2.close();
+//    std::ofstream outfile2(resFile_HO.c_str());
+//    outfile2 << resFile_HO << std::endl;
+//    outfile2.close();
 
     std::ofstream outfile3(resFile_HP.c_str());
     outfile3 << resFile_HP << std::endl;
@@ -313,31 +334,39 @@ struct Atom
     Vector3D mCoord;
 };
 
+struct Molecule
+{
+    std::vector<Atom> mAtoms;
+    std::string mName;
+    float mEnergy;
+};
 
 // Fill distances files and bonds 
-void fillDistancesAndBonds(const std::vector<Atom>& atoms, std::ofstream& ofs)
+void fillDistancesAndBonds(const Molecule& mol, std::ofstream& ofs)
 {
-    
+
     std::map<std::string, int> bonds;       // num bonds in molecule
-    const int size = atoms.size();
+    const int size = mol.mAtoms.size();
     
     std::vector< std::vector<char> > matrixBonds;
     std::vector<char> tmp(size, 0);
-    for (int i =0; i < size; ++i)
+    for (int i = 0; i < size; ++i)
         matrixBonds.push_back(tmp);
-    
-    
+
+
     std::map<std::pair<std::string,int>, int> binding;     // respond to current binding in molecule
 
     for (int i = 0; i < size; ++i)
     {
-        std::string s1 = atoms[i].mName;
+        Atom atom1 = mol.mAtoms[i];
+        std::string s1 = atom1.mName;
         std::map<float, std::pair<std::string, int> > distances; // to another atoms
         for (int j = i + 1; j < size; ++j)
         {
-            std::string s2 = atoms[j].mName;
+            Atom atom2 = mol.mAtoms[j];
+            std::string s2 = atom2.mName;
             
-            float magnitude = int(1000 * Magnitude(atoms[i].mCoord - atoms[j].mCoord)) / 1000.f;
+            float magnitude = int(1000 * Magnitude(atom1.mCoord - atom2.mCoord)) / 1000.f;
             distances[magnitude] = std::make_pair(s2, j);
             
             switch (mendel[s1] * mendel[s2])
@@ -409,7 +438,7 @@ void fillDistancesAndBonds(const std::vector<Atom>& atoms, std::ofstream& ofs)
         }
         
         int v = 0,
-            valence = valences[atoms[i].mName];
+            valence = valences[s1];
         for (std::map<float, std::pair<std::string, int> >::iterator it = distances.begin();
              it != distances.end() && v < valence; ++it, ++v)
         {
@@ -429,66 +458,106 @@ void fillDistancesAndBonds(const std::vector<Atom>& atoms, std::ofstream& ofs)
 
     for (std::map<std::string, int>::iterator it = bonds.begin();
          it != bonds.end(); ++it)
-        ofs << it->first << "\t" << it->second << std::endl;
+        ofs << it->first << "\t";
+    ofs << std::endl;
+
+    for (std::map<std::string, int>::iterator it = bonds.begin();
+         it != bonds.end(); ++it)
+        ofs << it->second << "\t";
+    ofs << std::endl;
 }
 
 
 int main(int argc, char* argv[])
 {
     std::string argFile;
+    std::string energyList;
     if (argc > 1)
     {
-        const char* param = argv[1];
-        if (0 == strncmp(param, "-in=", 4))
-            argFile = param + 4;
+        for (int i = 0; i < argc; ++i)
+        {
+            const char* param = argv[i];
+            if (0 == strncmp(param, "-in=", 4))
+                argFile = param + 4;
+            if (0 == strncmp(param, "-e=", 3))
+                energyList = param + 3;
+        }
     }
-    
+
     std::string resDir = argFile + "/Results/";
+    if (!core::isDir(resDir.c_str()))
+        core::mkDir(resDir.c_str());
+        
     fillMendelAndValences();
     std::vector<std::string> files;
-    if (!argFile.empty() && core::listFiles(argFile, files))
+    if (!argFile.empty() && core::listFiles(argFile, files) &&
+        !energyList.empty() && core::isFileExists(energyList.c_str()))
     {
+        std::map<std::string, float> energies;
+        const int maxSymbols = 200;
+        char str[maxSymbols];
+        FILE* inFile1 = fopen(energyList.c_str(), "r");
+        fgets(str, maxSymbols, inFile1);
+        fgets(str, maxSymbols, inFile1);
+        fgets(str, maxSymbols, inFile1);
+
+        while(fgets(str, maxSymbols, inFile1))
+        {
+             std::istringstream iss(str);
+             float energy;
+             std::string name;
+             if ((iss >> name >> energy) && !name.empty())
+             {
+                 size_t pose = name.find_first_of(".");
+                 name = std::string::npos == pose ? name : std::string(name.begin(), name.begin() + pose);
+                 energies[name] = energy;
+             }
+        }
+        
+        std::ofstream ofs((resDir + "parsed").c_str());
+        
         for (int i = 0, size = files.size(); i < size; ++i)
         {
-            if (0 == core::getExt(files[i]).compare("xyz"))
+            const std::string name = files[i];
+            if (0 == core::getExt(name).compare("xyz"))
             {
-                const std::string path = argFile + "/" + files[i];
+                const std::string path = argFile + "/" + name;
                 FILE* inFile = fopen(path.c_str(), "r");
                 if (inFile)
                 {
                     int numAtoms = 0;
                     fscanf(inFile, "%d", &numAtoms);
 
-                    std::vector<Atom> atoms;
+                    Molecule mol;
+                    mol.mName = core::name(name);
+                    mol.mEnergy = energies[mol.mName];
+                    mol.mAtoms.assign(numAtoms, Atom());
 
                     for (int j = 0; j < numAtoms; ++j)
                     {
-                        Atom atom;
+                        Atom* atom = &(mol.mAtoms[j]);
                         char name[4]; // max name of atom have 4 symbols
                         fscanf(inFile, "%s", &name);
-                        atom.mName = std::string(name);
-                        fscanf(inFile, "%f %f %f", &atom.mCoord.x, &atom.mCoord.y, &atom.mCoord.z);
-
-                        atoms.push_back(atom);
+                        atom->mName = std::string(name);
+                        fscanf(inFile, "%f %f %f", &(atom->mCoord.x), &(atom->mCoord.y), &(atom->mCoord.z));
                     }
 
-                    std::ofstream ofs((resDir + files[i] + ".parsed").c_str());
-                    ofs << path << std::endl;
+                    ofs << path << "\t\t" << mol.mEnergy << std::endl;
 
-                    fillDistancesAndBonds(atoms, ofs);
+                    fillDistancesAndBonds(mol, ofs);
 
-                    ofs << "------------------------------------------\n";
-                    ofs.close();
+                    ofs << "_____________________________________________________________\n";
                 }
 
                 fclose(inFile);
             }
         }
         
+        ofs.close();
         core::time t;
         getTime(t);
 
-//        bool res = parseMolgen(argFile);
+        //bool res = parseMolgen(argFile);
 //        std::string time = getTime();
     }
 
