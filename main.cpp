@@ -263,13 +263,15 @@ bool parseMolgen(const std::string& path)
 std::map<std::string, int> mendel;
 // map: first - name, second - valence
 std::map<std::string, int> valences;
+// map: first - bond, second - num;
+std::map<std::string, int> _bonds;
 
 const std::string resFile_HO = "resFile_HO";
 const std::string resFile_HCa = "resFile_HCa";
 const std::string resFile_HP = "resFile_HP";
 const std::string resFile_OO = "resFile_OO";
 const std::string resFile_OP = "resFile_OP";
-const std::string resFile_OCa = "resFile_CaCa";
+const std::string resFile_OCa = "resFile_OCa";
 const std::string resFile_PP = "resFile_PP";
 const std::string resFile_PCa = "resFile_PCa";
 const std::string resFile_CaCa = "resFile_CaCa";
@@ -286,7 +288,17 @@ void fillMendelAndValences()
     valences["P"] = 5;
     valences["Ca"] = 2;
 
-
+    int i = 0;
+    _bonds["HO"] = ++i;
+    _bonds["HCa"] = ++i;
+    _bonds["HP"] = ++i;
+    _bonds["OO"] = ++i;
+    _bonds["OP"] = ++i;
+    _bonds["OCa"] = ++i;
+    _bonds["PP"] = ++i;
+    _bonds["PCa"] = ++i;
+    _bonds["CaCa"] = ++i;
+    
     std::ofstream outfile(resFile_HO.c_str());
     outfile << resFile_HO << std::endl;
     outfile.close();
@@ -456,14 +468,14 @@ void fillDistancesAndBonds(const Molecule& mol, std::ofstream& ofs)
         }
     }
 
-    for (std::map<std::string, int>::iterator it = bonds.begin();
-         it != bonds.end(); ++it)
+    for (std::map<std::string, int>::iterator it = _bonds.begin();
+         it != _bonds.end(); ++it)
         ofs << it->first << "\t";
     ofs << std::endl;
 
-    for (std::map<std::string, int>::iterator it = bonds.begin();
-         it != bonds.end(); ++it)
-        ofs << it->second << "\t";
+    for (std::map<std::string, int>::iterator it = _bonds.begin();
+         it != _bonds.end(); ++it)
+        ofs << bonds[it->first] << "\t";
     ofs << std::endl;
 }
 
