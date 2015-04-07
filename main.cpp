@@ -361,6 +361,7 @@ struct Molecule
 {
     std::vector<Atom> mAtoms;
     std::string mName;
+    std::string mPath;
     std::map<std::string, int> mBonds;
     unsigned int hash;
     float mEnergy;
@@ -475,9 +476,26 @@ void fillDistancesAndBonds1(Molecule& mol)
         }
     }
 
+//    int num = 0;
+//    for (std::map<int, std::vector<std::pair<int, int> > >::iterator it = distances.begin();
+//         num < numSemiBonds / 2; ++it)
+//    {
+//        int sizeSize = it->second.size();
+//        for (int i = 0; i < sizeSize; ++i)
+//        {
+//            std::pair<int, int> thisPair = it->second[i];
+//            const std::string name1 = mol.mAtoms[thisPair.first].mName;
+//            const std::string name2 = mol.mAtoms[thisPair.second].mName;
+//            const std::string res = _mendel[name1] < _mendel[name2] ? name1 + name2 : name2 + name1;
+//            ++mol.mBonds[res];
+//            ++num;
+//        }
+//    }
+
+
     int num = 0;
     for (std::map<int, std::vector<std::pair<int, int> > >::iterator it = distances.begin();
-         num < numSemiBonds / 2; ++it)
+         num < numSemiBonds / 2 && it != distances.end(); ++it)
     {
         std::vector<std::pair<int, int> > tmpBonds = it->second;
         const int tmpBondsSize = tmpBonds.size();
@@ -490,7 +508,13 @@ void fillDistancesAndBonds1(Molecule& mol)
             const float equilibriumDist = _radii[name1] + _radii[name2];
             const float curDist = it->first / 1000.f;
             const float ratioDist = fabs(curDist - equilibriumDist) / equilibriumDist;
-            if (ratioDist < 0.2f)
+            if ((name1 == "Ca" || name2 == "Ca") && ratioDist < 0.4f)
+            {
+                const std::string res = _mendel[name1] < _mendel[name2] ? name1 + name2 : name2 + name1;
+                ++mol.mBonds[res];
+                ++num;
+            }
+            else if (ratioDist < 0.2f)
             {
                 const std::string res = _mendel[name1] < _mendel[name2] ? name1 + name2 : name2 + name1;
                 ++mol.mBonds[res];
@@ -500,6 +524,125 @@ void fillDistancesAndBonds1(Molecule& mol)
     }
 }
 
+bool readFromFile(Molecule& mol)
+{
+    if (!mol.mPath.empty())
+    {
+        FILE* inFile = fopen(mol.mPath.c_str(), "r");
+        if (inFile)
+        {
+            int numAtoms = 0;
+            fscanf(inFile, "%d", &numAtoms);
+            
+            mol.mAtoms.assign(numAtoms, Atom());
+            
+            for (int j = 0; j < numAtoms; ++j)
+            {
+                Atom* atom = &(mol.mAtoms[j]);
+                char name[4]; // max name of atom have 4 symbols
+                fscanf(inFile, "%s", &name);
+                atom->mName = std::string(name);
+                fscanf(inFile, "%f %f %f", &(atom->mCoord.x), &(atom->mCoord.y), &(atom->mCoord.z));
+                atom->mValence = _valences[name];
+            }
+            
+            fclose(inFile);
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+bool readEnergies(const std::string& energyList, std::map<float, std::string>& energies, std::map<std::string, float>& invertedEnergies)
+{
+    energies.clear();    
+    const int maxSymbols = 200;
+    char str[maxSymbols];
+    FILE* inFile1 = fopen(energyList.c_str(), "r");
+    fgets(str, maxSymbols, inFile1);
+    fgets(str, maxSymbols, inFile1);
+    fgets(str, maxSymbols, inFile1);
+
+    while(fgets(str, maxSymbols, inFile1))
+    {
+         std::istringstream iss(str);
+         float energy;
+         std::string name;
+         if ((iss >> name >> energy) && !name.empty())
+         {
+             size_t pose = name.find_first_of(".");
+             name = std::string::npos == pose ? name : std::string(name.begin(), name.begin() + pose);
+             energies[energy] = name;
+             invertedEnergies[name] = energy;
+         }
+    }
+   
+}
+
+const std::string divider = "=====";
+
+bool readSets(const std::string& path, std::vector<std::vector<std::string> > sets)
+{
+    bool res = false;
+    sets.clear();
+    if (core::isFileExists(path.c_str()))
+    {
+        FILE* inFile = fopen(path.c_str(), "r");
+        if (inFile)
+        {
+            char name[200];
+            std::vector<std::string> names;
+            while (!std::eof(inFile) && fscanf(inFile, "%s", &name))
+            {
+                if (0 == divider.compare(name))
+                {
+                    sets.push_back(names);
+                    names.clear();
+                }
+                else
+                    names.push_back(std::string(name));
+            }
+            res = true;
+        }
+    }
+    return res;
+}
+
+bool writeMolMap(std::map<uint, Molecule>& molMap, const std::string& resDir)
+{
+    if (!molMap.empty()) {
+        int i = 0;
+        uint mapSize = molMap.size();
+        Matrix<float> X(mapSize, _bonds.size() + 1);
+        Matrix<float> Y(1, mapSize);
+
+        std::ofstream ofsBonds((resDir + "bonds.txt").c_str());
+        std::ofstream ofsEnergy((resDir + "energy.txt").c_str());
+
+        for (std::map<uint, Molecule>::iterator itMol = molMap.begin();
+             itMol != molMap.end(); ++itMol, ++i)
+        {
+            Molecule mol = itMol->second;
+            ofsEnergy << mol.mEnergy << std::endl;
+            Y.put(0, i, mol.mEnergy);
+            X.put(i, 0, 1.f);
+
+            int j = 1;
+            ofsBonds << "1\t";
+            for (std::map<std::string, int>::iterator it = _bonds.begin();
+                 it != _bonds.end(); ++it, ++j)
+            {
+                ofsBonds << mol.mBonds[it->first] << "\t";
+                X.put(i, j, (float)mol.mBonds[it->first]);
+            }
+            ofsBonds << std::endl;
+        }
+
+        ofsBonds.close();
+        ofsEnergy.close();
+    }
+}
 
 int main(int argc, char* argv[])
 {
@@ -527,25 +670,8 @@ int main(int argc, char* argv[])
         !energyList.empty() && core::isFileExists(energyList.c_str()))
     {
         std::map<float, std::string> energies;
-        const int maxSymbols = 200;
-        char str[maxSymbols];
-        FILE* inFile1 = fopen(energyList.c_str(), "r");
-        fgets(str, maxSymbols, inFile1);
-        fgets(str, maxSymbols, inFile1);
-        fgets(str, maxSymbols, inFile1);
-
-        while(fgets(str, maxSymbols, inFile1))
-        {
-             std::istringstream iss(str);
-             float energy;
-             std::string name;
-             if ((iss >> name >> energy) && !name.empty())
-             {
-                 size_t pose = name.find_first_of(".");
-                 name = std::string::npos == pose ? name : std::string(name.begin(), name.begin() + pose);
-                 energies[energy] = name;
-             }
-        }
+        std::map<std::string, float> invertedEnergies;
+        readEnergies(energyList, energies, invertedEnergies);
 
         std::ofstream ofs((resDir + "parsed").c_str());
         ofs << "\tName\t\t\t"; 
@@ -554,61 +680,72 @@ int main(int argc, char* argv[])
         ofs << "\tEnergy\n";
 
         std::map<uint, Molecule> molMap;
-        molMap.clear();
 
+        // ==========================================================================
+        const std::string pathToSets("Ca2PO4_PO_bonds");
+        std::vector<std::vector<std::string> > names;
+        bool res1 = readSets(pathToSets, names);
+        
+        if (res1)
+        {
+            molMap.clear();
+            for (int i = 0, size = names.size(); i < size; ++i)
+            {
+                std::vector<Molecule> molecules(names[i].size());
+                for (int j = 0, sizeNames = molecules.size(); j < sizeNames; ++j)
+                {
+                    Molecule* mol = &(molecules[j]);
+                    mol->mPath = names[i][j];
+                    mol->mName = core::name(mol->mPath);
+                    mol->mEnergy = invertedEnergies[mol->mName];
+                    if (readFromFile(*mol))
+                        fillDistancesAndBonds1(*mol);
+
+                    std::map<uint, Molecule> molMap;
+                    const uint hash = mol->getHash();
+                    if (molMap.find(hash) == molMap.end() &&
+                        10 == mol->getBondsNum())
+                    molMap[hash] = *mol;
+                }
+                
+                writeMolMap(molMap, resDir);
+            }
+            
+        }
+
+        // ==========================================================================
+        
         std::vector<Molecule> molecules(energies.size());
         int ii = 0;
         for (std::map<float, std::string>::iterator it = energies.begin();
              it != energies.end(); ++it)
         {
             const std::string name = it->second;
-            const std::string path = argFile + "/" + name + ".xyz";
-            FILE* inFile = fopen(path.c_str(), "r");
-            if (inFile)
+            Molecule* mol = &(molecules[ii]);
+            mol->mEnergy = it->first;
+            mol->mName = name;
+            mol->mPath = argFile + "/" + name + ".xyz";
+            
+            if (readFromFile(*mol))
             {
-                int numAtoms = 0;
-                fscanf(inFile, "%d", &numAtoms);
-
-                Molecule* mol = &(molecules[ii++]);
-                mol->mEnergy = it->first;
-                mol->mName = name;
-                mol->mAtoms.assign(numAtoms, Atom());
-
-                for (int j = 0; j < numAtoms; ++j)
-                {
-                    Atom* atom = &(mol->mAtoms[j]);
-                    char name[4]; // max name of atom have 4 symbols
-                    fscanf(inFile, "%s", &name);
-                    atom->mName = std::string(name);
-                    fscanf(inFile, "%f %f %f", &(atom->mCoord.x), &(atom->mCoord.y), &(atom->mCoord.z));
-                    atom->mValence = _valences[name];
-                }
-
-                ofs << path << "\t";
-
-                // std::map<std::string, int> bonds;      // num bonds in molecule
                 fillDistancesAndBonds1(*mol);
-                //    for (std::map<std::string, int>::iterator it = _bonds.begin();
-                //         it != _bonds.end(); ++it)
-                //        ofs << it->first << "\t";
-                //    ofs << std::endl;
-
+                
+                ofs << mol->mPath << "\t";
+                ++ii;
                 const uint hash = mol->getHash();
                 if (molMap.find(hash) == molMap.end() &&
                         10 == mol->getBondsNum())
                     molMap[hash] = *mol;
-
+        
                 //Y.put(0, i, mol.mEnergy);
                 //X.put(i, 0, 1.f);
                 for (std::map<std::string, int>::iterator it = _bonds.begin();
                      it != _bonds.end(); ++it)
                     ofs << mol->mBonds[it->first] << "\t";
-
+        
                 ofs << mol->mEnergy << "\n";
                 //ofs << mol.mEnergy << "\n_____________________________________________________________\n";
             }
-
-            fclose(inFile);;
         }
         ofs.close();
 
@@ -631,65 +768,34 @@ int main(int argc, char* argv[])
         }
         ofsNew.close();
         
-        if (!molMap.empty()) {
-            int i = 0;
-            uint mapSize = molMap.size();
-            Matrix<float> X(mapSize, _bonds.size() + 1);
-            Matrix<float> Y(1, mapSize);
-
-            std::ofstream ofsBonds((resDir + "bonds.txt").c_str());
-            std::ofstream ofsEnergy((resDir + "energy.txt").c_str());
-
-            for (std::map<uint, Molecule>::iterator itMol = molMap.begin();
-                 itMol != molMap.end(); ++itMol, ++i)
-            {
-                Molecule mol = itMol->second;
-                ofsEnergy << mol.mEnergy << std::endl;
-                Y.put(0, i, mol.mEnergy);
-                X.put(i, 0, 1.f);
-
-                int j = 1;
-                ofsBonds << "1\t";
-                for (std::map<std::string, int>::iterator it = _bonds.begin();
-                     it != _bonds.end(); ++it, ++j)
-                {
-                    ofsBonds << mol.mBonds[it->first] << "\t";
-                    X.put(i, j, (float)mol.mBonds[it->first]);
-                }
-                ofsBonds << std::endl;
-            }
-
-
-            ofsBonds.close();
-            ofsEnergy.close();
-
+        writeMolMap(molMap, resDir);
 //            std::cout << "Enter to run the program: ";
 //            std::cin.ignore().get(); //Pause Command for Linux Terminal
 
-            FILE* inRes = fopen("resCoef", "r");
-            std::vector<float> coefs(_bonds.size() + 1);
+        FILE* inRes = fopen("resCoef", "r");
+        std::vector<float> coefs(_bonds.size() + 1);
 
-            for (int i = 0, size = _bonds.size() + 1; i < size; ++i)
-                fscanf(inRes, "%f", &(coefs[i]));
+        for (int i = 0, size = _bonds.size() + 1; i < size; ++i)
+            fscanf(inRes, "%f", &(coefs[i]));
 
-            if (!coefs.empty())
+        if (!coefs.empty())
+        {
+            float RSS = 0.f;
+            for (std::map<uint, Molecule>::iterator itMol = molMap.begin();
+                 itMol != molMap.end(); ++itMol)
             {
-                float RSS = 0.f;
-                for (std::map<uint, Molecule>::iterator itMol = molMap.begin();
-                     itMol != molMap.end(); ++itMol)
-                {
-                    Molecule mol = itMol->second;
+                Molecule mol = itMol->second;
 
-                    float bondsEnergy = 0.f;
-                    int j = 0;
-                    for (std::map<std::string, int>::iterator it = _bonds.begin();
-                         it != _bonds.end(); ++it, ++j)
-                        bondsEnergy += mol.mBonds[it->first] * coefs[j];
+                float bondsEnergy = coefs[0];
+                int j = 1;
+                for (std::map<std::string, int>::iterator it = _bonds.begin();
+                     it != _bonds.end(); ++it, ++j)
+                    bondsEnergy += mol.mBonds[it->first] * coefs[j];
 
-                    RSS += (mol.mEnergy - bondsEnergy) * (mol.mEnergy - bondsEnergy) / molMap.size();
-                }
-                std::cout << sqrt(RSS) << std::endl;
+                RSS += (mol.mEnergy - bondsEnergy) * (mol.mEnergy - bondsEnergy) / molMap.size();
             }
+            std::cout << sqrt(RSS) << std::endl;
+        }
 
 
 //            Matrix<float> X_2 = X * X.getTranspose();
@@ -699,7 +805,6 @@ int main(int argc, char* argv[])
 
 //            new_XX.getColumns();
 //            std::cout << X_2.determinant() << std::endl;
-        }
 
 
         core::time t;
