@@ -199,6 +199,11 @@ class Vector3D
             return (*this /= sqrtf(x * x + y * y + z * z));
         }
         
+        float Magnitude(void)
+        {
+            return sqrtf(x*x + y*y + z*z);
+        }
+        
         Vector3D& RotateAboutX(float angle);
         Vector3D& RotateAboutY(float angle);
         Vector3D& RotateAboutZ(float angle);

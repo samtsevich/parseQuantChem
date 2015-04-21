@@ -654,7 +654,6 @@ bool writeMolMap(const int& num, std::map<uint, Molecule>& molMap, const std::st
     }
 }
 
-// return -1 if false, and num of atom if successful
 void findDoubleOBond(const Molecule& mol)
 {
     assert(!mol.mAtoms.empty());
@@ -857,14 +856,14 @@ int main(int argc, char* argv[])
 //                }
 //                ofsNew.close();
 
-                //writeMolMap(num++, molMap, resDir);
+                //writeMolMap(num, molMap, resDir);
 
                 FILE* inRes = fopen("resCoef", "r");
                 std::vector<float> coefs(_bonds.size() + 3);
 
                 for (int i = 0, size = _bonds.size() + 3; i < size; ++i)
                     fscanf(inRes, "%f", &(coefs[i]));
-
+                
                 if (!coefs.empty())
                 {
                     float RSS = 0.f;
@@ -874,12 +873,16 @@ int main(int argc, char* argv[])
                         Molecule mol = itMol->second;
 
                         float bondsEnergy = coefs[num];
-                        int j = 1;
+                        int j = 3;
                         for (std::map<std::string, int>::iterator it = _bonds.begin();
                              it != _bonds.end(); ++it, ++j)
+                        {
+                            const float numBonds = mol.mBonds[it->first];
                             bondsEnergy += mol.mBonds[it->first] * coefs[j];
+                        }
 
-                        RSS += (mol.mEnergy - bondsEnergy) * (mol.mEnergy - bondsEnergy) / molMap.size();
+                        const float diff = mol.mEnergy - bondsEnergy;
+                        RSS += diff * diff / molMap.size();
                     }
                     std::cout << sqrt(RSS) << std::endl;
                 }
