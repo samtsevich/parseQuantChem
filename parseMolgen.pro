@@ -21,4 +21,7 @@ SOURCES += main.cpp \
 
 HEADERS += \
     Vector3D.h \
-    Vector2D.h
+    Vector2D.h \
+    Molecule.h \
+    utils.h \
+    sysutils.h
