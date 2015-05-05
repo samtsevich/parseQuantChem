@@ -4,11 +4,13 @@
 #include <sstream>
 #include <fstream>
 #include <stdio.h>
+#include <stdlib.h>
 #include <iomanip>
 #include <string.h>
 #include <algorithm>
 #include <map>
 #include <matrix.h>
+#include <limits>
 
 #include "Vector3D.h"
 #include "Molecule.h"
@@ -191,8 +193,70 @@ bool writeMolMap(const int& num, std::map<uint, Molecule*>& molMap, const std::s
     }
 }
 
+void checkingApproximation()
+{
+    srand(time(NULL));
+    const int size = 18;
+    std::ofstream ofsCoef("resCoef.txt");
+    std::vector<int> coefs(size, 0);
+    for (int i = 0; i < size; ++i)
+    {
+        coefs[i] = rand() % 2000 - 1000;
+        ofsCoef << coefs[i] << "\n";
+    }
+    ofsCoef.close();
+
+    const int numEquations = 40;
+    std::vector<ull> equations;
+
+    std::cout << std::numeric_limits<ull>::min() << "\n" << 
+                 std::numeric_limits<ull>::max() << std::endl;
+
+    while (equations.size() != numEquations)
+    {
+        ull N = 0;
+        const int maxBonds = 20;
+        int numBonds = 0;
+        for (int i = 0; i < size; ++i)
+        {
+            int curbond = rand() % 3;
+            numBonds += curbond;
+            N = N * 10 + curbond;
+        }
+
+        if (equations.end() == std::find(equations.begin(), equations.end(), N))
+            equations.push_back(N);
+    }
+
+    std::ofstream ofsEnergy("energy.txt");
+    std::ofstream ofsBonds("bonds.txt");
+    std::vector<int> energies(numEquations, 0);
+    for (int i = 0; i < numEquations; ++i)
+    {
+        ull k = equations[i];
+        int j = 0;
+        while (k != 0)
+        {
+            int res = k % 10;
+            energies[i] += res * coefs[j++];
+            k /= 10;
+            ofsBonds << res << "\t";
+        }
+
+        while (j++ < coefs.size())
+            ofsBonds << "0\t";
+
+        ofsBonds << std::endl;
+        ofsEnergy << energies[i] << std::endl;
+    }
+    ofsBonds.close();
+    ofsEnergy.close();
+}
+
 int main(int argc, char* argv[])
 {
+    //checkingApproximation();
+
     std::string argFile;
     if (argc > 1)
     {
@@ -319,12 +383,13 @@ int main(int argc, char* argv[])
 
                         if (mol->isCoherent())
                         {
+                            mol->writeGaussianFile();
                             ofs << mol->mPath << "\t";
                             ++ii;
-                            const uint hash = mol->getHash();
-                            if (molMap.find(hash) == molMap.end() &&
-                                    mol->mustBeBonds() == mol->getBondsNum())
-                                molMap[hash] = mol;
+//                            const uint hash = mol->getHash();
+//                            if (molMap.find(hash) == molMap.end() &&
+//                                    mol->mustBeBonds() == mol->getBondsNum())
+//                                molMap[hash] = mol;
 
                             for (std::set<std::string>::iterator it = _bonds.begin();
                                  it != _bonds.end(); ++it)
@@ -333,9 +398,12 @@ int main(int argc, char* argv[])
                             ofs << mol->mEnergy << "\n";
                             //ofs << mol.mEnergy << "\n_____________________________________________________________\n";
                         }
+                        else
+                            std::cout << "Bad complex = " << mol->mPath << std::endl;
                     }
                 }
                 ofs.close();
+                std::cout << ii << "\tof\t" << molecules.size() << std::endl;
 
 //                std::ofstream ofsNew((resDir + "new.txt").c_str());
 //                for (int j = 0, SIZE = molecules.size();
@@ -356,7 +424,7 @@ int main(int argc, char* argv[])
 //                }
 //                ofsNew.close();
 
-                writeMolMap(num, molMap, resDir);
+                //writeMolMap(num, molMap, resDir);
 
                 const int numSets = 3;
                 FILE* inRes = fopen("resCoef", "r");
@@ -365,7 +433,7 @@ int main(int argc, char* argv[])
                 for (int i = 0, size = _bonds.size() + numSets; i < size; ++i)
                     fscanf(inRes, "%f", &(coefs[i]));
                 
-                if (!coefs.empty() && false)
+                if (!coefs.empty() && true)
                 {
                     float RSS = 0.f;
                     for (std::map<uint, Molecule*>::iterator itMol = molMap.begin();

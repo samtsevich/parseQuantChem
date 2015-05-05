@@ -7,6 +7,8 @@
 
 namespace phys {
 
+const char* energyHeader = "%nproc=2\n# b3lyp/6-31G(d,p) pop=(ReadRadii,MK)\n\n";
+
 // map: first - name, second - atom mass
 std::map<std::string, int> _mendel;
 // map: first - name, second - valence
@@ -351,6 +353,7 @@ struct Molecule
         std::map<int, std::vector<std::pair<int, int> > > distances;
     
         uint numSemiBonds = -2 * findDoubleOBond();
+        //uint numSemiBonds = 0;
         for (int i = 0; i < mNumAtoms; ++i)
         {
             Atom atom1 = mAtoms[i];
@@ -408,13 +411,13 @@ struct Molecule
             }
         }
 
-        for (int i = 0; i < mNumAtoms; ++i)
-        {
-            for (int j = 0; j < mNumAtoms; ++j)
-                std::cout << bonds[i][j] << "\t";
-            std::cout << std::endl;
-        }
-        std::cout << std::endl << std::endl;
+//        for (int i = 0; i < mNumAtoms; ++i)
+//        {
+//            for (int j = 0; j < mNumAtoms; ++j)
+//                std::cout << bonds[i][j] << "\t";
+//            std::cout << std::endl;
+//        }
+//        std::cout << std::endl << std::endl;
     }
 
     bool readFromFile()
@@ -458,6 +461,23 @@ struct Molecule
             coherent = 1 == vertexes[i];
 
         return coherent;
+    }
+
+    void writeGaussianFile()
+    {
+        assert(!mAtoms.empty() && coherent);
+
+        std::ofstream ofs((mPath + ".gjf").c_str());
+        ofs << energyHeader;
+        ofs << mName << "\n\n 0 1\n";
+
+        for (int i = 0; i < mNumAtoms; ++i)
+            ofs << " " << mAtoms[i].mName << "\t" <<
+                   mAtoms[i].mCoord.x << "\t" <<
+                   mAtoms[i].mCoord.y << "\t" <<
+                   mAtoms[i].mCoord.z << "\n";
+        ofs << "\n Ca 1.188\n\n\n";
+        ofs.close();
     }
 
 private:
