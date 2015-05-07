@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <dirent.h>
+#include <sstream>
 #include <time.h>
 #include <sys/stat.h>
 

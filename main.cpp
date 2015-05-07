@@ -1,7 +1,6 @@
 // This will convert results of MOLGEN to many .mol2 files
 
 #include <iostream>
-#include <sstream>
 #include <fstream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +24,8 @@ const char* mol2Header2 = "SMALL\nGASTEIGER\n";
 
 const char* atomHeader = "@<TRIPOS>ATOM\n";
 const char* bondHeader = "@<TRIPOS>BOND\n";
+
+const std::string resCharges("resCharges/");
 
 const char* goodEnd = "M  END";
 
@@ -190,7 +191,9 @@ bool writeMolMap(const int& num, std::map<uint, Molecule*>& molMap, const std::s
 
         ofsBonds.close();
         ofsEnergy.close();
+        return true;
     }
+    return false;
 }
 
 void checkingApproximation()
@@ -206,7 +209,7 @@ void checkingApproximation()
     }
     ofsCoef.close();
 
-    const int numEquations = 40;
+    const uint numEquations = 40;
     std::vector<ull> equations;
 
     std::cout << std::numeric_limits<ull>::min() << "\n" << 
@@ -215,7 +218,6 @@ void checkingApproximation()
     while (equations.size() != numEquations)
     {
         ull N = 0;
-        const int maxBonds = 20;
         int numBonds = 0;
         for (int i = 0; i < size; ++i)
         {
@@ -231,10 +233,10 @@ void checkingApproximation()
     std::ofstream ofsEnergy("energy.txt");
     std::ofstream ofsBonds("bonds.txt");
     std::vector<int> energies(numEquations, 0);
-    for (int i = 0; i < numEquations; ++i)
+    for (uint i = 0; i < numEquations; ++i)
     {
         ull k = equations[i];
-        int j = 0;
+        uint j = 0;
         while (k != 0)
         {
             int res = k % 10;
@@ -282,7 +284,8 @@ int main(int argc, char* argv[])
     if (!argFile.empty() && core::listFiles(argFile, files) && !files.empty())
     {
         int num = 0;
-        for (int i = 0; i < files.size(); ++i)
+        std::map<int, std::pair<int, float> > allCharges;
+        for (uint i = 0; i < files.size(); ++i)
         {
             const std::string dir = argFile + "/" + files[i];
             const std::string energyList = dir + "/energies";
@@ -384,6 +387,10 @@ int main(int argc, char* argv[])
                         if (mol->isCoherent())
                         {
                             mol->writeGaussianFile();
+                            const std::string pathCharges = argFile + "/" + resCharges + mol->mName + ".xyz.out";
+                            mol->readCharges(pathCharges);
+                            mol->energyExcludeCa();
+                            mol->fillChargesStat(allCharges);
                             ofs << mol->mPath << "\t";
                             ++ii;
 //                            const uint hash = mol->getHash();
@@ -459,6 +466,22 @@ int main(int argc, char* argv[])
             }
         }
 
+        if (!allCharges.empty())
+        {
+            std::ofstream ofsCharge("resCharges");
+            for (std::map<int, std::pair<int, float> >::iterator it = allCharges.begin();
+                 it != allCharges.end(); ++it)
+            {
+                if (it->first > 0)
+                {
+                    ofsCharge << "Z = " << it->first << "\t";
+                    ofsCharge << it->second.second / it->second.first << std::endl;
+                    ofsCharge << "\tMax = " << allCharges[-it->first];
+                    ofsCharge << "\tMin = " << allCharges[-2* it->first];
+                }
+            }
+
+        }
     }
 
     return 0;

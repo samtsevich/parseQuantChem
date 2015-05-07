@@ -3,14 +3,18 @@
 
 #include "utils.h"
 #include "sysutils.h"
+#include <sstream>
 #include <set>
 
 namespace phys {
 
+const float E_Hartree = 627.503;    // kcal/mol
+const float a_Bohr = 0.529177;      // Angstrom
+
 const char* energyHeader = "%nproc=2\n# b3lyp/6-31G(d,p) pop=(ReadRadii,MK)\n\n";
 
 // map: first - name, second - atom mass
-std::map<std::string, int> _mendel;
+std::map<std::string, uint> _mendel;
 // map: first - name, second - valence
 std::map<std::string, int> _valences;
 // set of names of bonds;
@@ -107,7 +111,10 @@ struct Atom
 {
     std::string mName;
     Vector3D mCoord;
-    int mValence;
+    uint mValence;
+    float mCharge;
+    uint Z;
+    float radius;
 };
 
 struct Molecule
@@ -119,11 +126,14 @@ struct Molecule
     std::string mPath;
     std::map<std::string, int> mBonds;
     int** bonds;
+    const char* chargeheader;
+    const char* dipoleheader;
 
     unsigned int hash;
     float mEnergy;
 
-    Molecule() : mNumAtoms(0), coherent(true)
+    Molecule() : mNumAtoms(0), coherent(true),
+                 chargeheader("Charge="), dipoleheader("Dipole=")
     {
     }
 
@@ -246,7 +256,7 @@ struct Molecule
         std::ofstream ofs("resultDoubleBonds", std::ios_base::app);
         uint numDoubleBonds = 0;
         const uint size = mAtoms.size();
-        for (int i = 0; i < size; ++i)
+        for (uint i = 0; i < size; ++i)
         {
             const Atom* atom1 = &(mAtoms[i]);
             if (0 == atom1->mName.compare("O"))
@@ -254,11 +264,11 @@ struct Molecule
                 int endAtom = -1;
                 uint numNeighborAtoms = 0;
                 const Atom* atom2 = 0;
-                for (int j = 0; j < size; ++j)
+                for (uint j = 0; j < size; ++j)
                 {
                     atom2 = &(mAtoms[j]);
 
-                    const float equilibriumDist = _radii["O"] + _radii[atom2->mName];
+                    const float equilibriumDist = _radii["O"] + atom2->radius;
                     const float dist = (atom1->mCoord - atom2->mCoord).Magnitude();
                     const float ratio = fabs(dist - equilibriumDist) / equilibriumDist;
                     if (ratio < 0.2f)
@@ -271,7 +281,7 @@ struct Molecule
                 if (numNeighborAtoms == 1)
                 {
                     bonds[i][endAtom] = bonds[endAtom][i] = 2;
-                    std::string name = _mendel["O"] < _mendel[atom2->mName] ?
+                    std::string name = _mendel["O"] < atom2->Z ?
                                 std::string("O2") + atom2->mName : atom2->mName + std::string("2O");    // here 2-Oxygen or Oxygen-2
                     mBonds[name] += 2;
 
@@ -385,25 +395,27 @@ struct Molecule
     //        }
     //    }
 
-        int num = 0;
-        const std::string singBond("1");
+        uint num = 0;
+        const std::string singleBond("1");
         for (std::map<int, std::vector<std::pair<int, int> > >::iterator it = distances.begin();
              num < numSemiBonds / 2 && it != distances.end(); ++it)
         {
             std::vector<std::pair<int, int> > tmpBonds = it->second;
-            const int tmpBondsSize = tmpBonds.size();
-            for (int i = 0; i < tmpBondsSize && num < numSemiBonds / 2; ++i)
+            const uint tmpBondsSize = tmpBonds.size();
+            for (uint i = 0; i < tmpBondsSize && num < numSemiBonds / 2; ++i)
             {
                 std::pair<int, int> bond = tmpBonds[i];
+                const Atom* atom1 = &mAtoms[bond.first];
+                const Atom* atom2 = &mAtoms[bond.second];
                 const std::string name1 = mAtoms[bond.first].mName;
                 const std::string name2 = mAtoms[bond.second].mName;
     
-                const float equilibriumDist = _radii[name1] + _radii[name2];
+                const float equilibriumDist = atom1->radius + atom2->radius;
                 const float curDist = it->first / 1000.f;
                 const float ratioDist = fabs(curDist - equilibriumDist) / equilibriumDist;
                 if (ratioDist < 0.2f)
                 {
-                    const std::string name = _mendel[name1] < _mendel[name2] ? name1 + singBond + name2 : name2 + singBond + name1;
+                    const std::string name = atom1->Z < atom2->Z ? name1 + singleBond + name2 : name2 + singleBond + name1;
                     ++mBonds[name];
                     bonds[bond.first][bond.second] = bonds[bond.second][bond.first] = 1;
                     ++num;
@@ -438,6 +450,8 @@ struct Molecule
                     char name[4]; // max name of atom have 4 symbols
                     fscanf(inFile, "%s", &name);
                     atom->mName = std::string(name);
+                    atom->Z = _mendel[atom->mName];
+                    atom->radius = _radii[atom->mName];
                     fscanf(inFile, "%f %f %f", &(atom->mCoord.x), &(atom->mCoord.y), &(atom->mCoord.z));
                     atom->mValence = _valences[name];
                 }
@@ -478,6 +492,88 @@ struct Molecule
                    mAtoms[i].mCoord.z << "\n";
         ofs << "\n Ca 1.188\n\n\n";
         ofs.close();
+    }
+
+    void readCharges(const std::string& path)
+    {
+        FILE* inFile = fopen(path.c_str(), "r");
+        if (inFile)
+        {
+            const int maxSymbols = 200;
+            char str[maxSymbols];
+
+            while (inFile != NULL && fgets(str, maxSymbols, inFile))
+            {
+                std::istringstream iss(str);
+                std::string charge, dipole;
+                float totalChargeValue;
+                iss >> charge >> totalChargeValue >> dipole;
+                if (0 == charge.compare(chargeheader) &&
+                    0 == dipole.compare(dipoleheader))
+                {
+                    fgets(str, maxSymbols, inFile);
+                    for (int i = 0; i < mNumAtoms; ++i)
+                    {
+                        fgets(str, maxSymbols, inFile);
+                        std::istringstream iss1(str);
+                        int n = -1;
+                        std::string name;
+                        float chargeValue;
+                        iss1 >> n >> name >> chargeValue;
+                        if (0 == name.compare(mAtoms[i].mName.c_str()))
+                            mAtoms[i].mCharge = chargeValue;
+                    }
+                }
+            }
+        }
+    }
+
+    void energyExcludeCa()
+    {
+        float energy = 0.f;
+        const std::string Ca = "Ca";
+        for (int i = 0; i < mNumAtoms; ++i)
+        {
+            Atom* atom1 = &(mAtoms[i]);
+            for (int j = i+1; j < mNumAtoms; ++j)
+            {
+                Atom* atom2 = &(mAtoms[j]);
+                if (Ca.compare(atom1->mName) ||
+                    Ca.compare(atom2->mName))
+                {
+                    const float dist = (atom1->mCoord - atom2->mCoord).Magnitude() / a_Bohr;
+                    energy += E_Hartree * atom1->mCharge * atom2->mCharge / dist;
+                }
+            }
+        }
+    }
+
+    void fillChargesStat(std::map<int, std::pair<int, float> >& allCharges)
+    {
+        for (int i = 0; i < mNumAtoms; ++i)
+        {
+            Atom* atom = &mAtoms[i];
+            if (0 == atom->Z)
+                std::cout << mName << std::endl;
+            if (allCharges.end() == allCharges.find(atom->Z))
+            {
+                allCharges[atom->Z] = std::make_pair(1, atom->mCharge);
+                allCharges[atom->Z * 2] = std::make_pair(1, atom->mCharge);
+                allCharges[atom->Z * 3] = std::make_pair(1, atom->mCharge);
+            }
+            else
+            {
+                std::pair<int, float>* p = &(allCharges[atom->Z]);
+                ++p->first;
+                p->second += atom->mCharge;
+                // -- max --
+                p = &(allCharges[-atom->Z]);
+                p->second = std::max(atom->mCharge, p->second);
+                // -- min --
+                p = &(allCharges[-2 * atom->Z]);
+                p->second = std::min(atom->mCharge, p->second);
+            }
+        }
     }
 
 private:
