@@ -8,7 +8,8 @@
 
 namespace phys {
 
-const float E_Hartree = 627.503;    // kcal/mol
+const float E_ex = 14.4f;
+const float E_eV = 23.0609f;        // eV to kcal/mol
 const float a_Bohr = 0.529177;      // Angstrom
 
 const char* energyHeader = "%nproc=2\n# b3lyp/6-31G(d,p) pop=(ReadRadii,MK)\n\n";
@@ -65,7 +66,6 @@ void fillMendelAndValences()
     _bonds.insert("P2Ca");
     _bonds.insert("Ca2Ca");
 
-
     std::ofstream outfile(resFile_HO.c_str());
     outfile << resFile_HO << std::endl;
     outfile.close();
@@ -115,6 +115,10 @@ struct Atom
     float mCharge;
     uint Z;
     float radius;
+    bool valid;
+
+    Atom() : valid(true)
+    {}
 };
 
 struct Molecule
@@ -125,15 +129,16 @@ struct Molecule
     std::string mName;
     std::string mPath;
     std::map<std::string, int> mBonds;
-    int** bonds;
+    int** bondsGrid;
     const char* chargeheader;
     const char* dipoleheader;
 
-    unsigned int hash;
+    ull hash;
     float mEnergy;
+    bool mExcludeCa;
 
     Molecule() : mNumAtoms(0), coherent(true),
-                 chargeheader("Charge="), dipoleheader("Dipole=")
+                 chargeheader("Charge="), dipoleheader("Dipole="), mExcludeCa(false)
     {
     }
 
@@ -142,8 +147,8 @@ struct Molecule
         if (mNumAtoms > 0)
         {
             for (int i = 0; i < mNumAtoms; ++i)
-                delete bonds[i];
-            delete bonds;
+                delete bondsGrid[i];
+            delete bondsGrid;
         }
     }
 
@@ -154,13 +159,13 @@ struct Molecule
             if (mAtoms.empty())
                 mAtoms.assign(mNumAtoms, Atom());
             assert((int)mAtoms.size() == numAtoms);
-            bonds = new int*[numAtoms];
+            bondsGrid = new int*[numAtoms];
 
             for (int i = 0; i < numAtoms; ++i)
             {
-                bonds[i] = new int[numAtoms];
+                bondsGrid[i] = new int[numAtoms];
                 for (int j = 0; j < numAtoms; ++j)
-                    bonds[i][j] = 0;
+                    bondsGrid[i][j] = 0;
             }
         }
     }
@@ -177,7 +182,7 @@ struct Molecule
 
     int bond(int i, int j)
     {
-        return isNormBond(i, j) ? bonds[i][j] : -1;
+        return isNormBond(i, j) ? bondsGrid[i][j] : -1;
     }
 
     void getHz(std::vector<uint>& distances) const
@@ -214,7 +219,7 @@ struct Molecule
         return res;
     }
 
-    uint getHash()
+    ull getHash()
     {
         hash = 0;
         if (!mBonds.empty() && !mAtoms.empty())
@@ -234,7 +239,8 @@ struct Molecule
     {
         uint num = 0;
         for (int i = 0, size = mAtoms.size(); i < size; ++i)
-            num += _valences[mAtoms[i].mName];
+            if (mAtoms[i].valid)
+                num += mAtoms[i].mValence;
         return num / 2;
     }
 
@@ -280,7 +286,7 @@ struct Molecule
 
                 if (numNeighborAtoms == 1)
                 {
-                    bonds[i][endAtom] = bonds[endAtom][i] = 2;
+                    bondsGrid[i][endAtom] = bondsGrid[endAtom][i] = 2;
                     std::string name = _mendel["O"] < atom2->Z ?
                                 std::string("O2") + atom2->mName : atom2->mName + std::string("2O");    // here 2-Oxygen or Oxygen-2
                     mBonds[name] += 2;
@@ -366,14 +372,14 @@ struct Molecule
         //uint numSemiBonds = 0;
         for (int i = 0; i < mNumAtoms; ++i)
         {
-            Atom atom1 = mAtoms[i];
-            numSemiBonds += atom1.mValence;
+            Atom* atom1 = &mAtoms[i];
+            numSemiBonds += atom1->mValence;
             for (int j = i + 1; j < mNumAtoms; ++j)
             {
-                if (0 == bonds[i][j])
+                Atom* atom2 = &mAtoms[j]; 
+                if (0 == bondsGrid[i][j])
                 {
-                    Atom atom2 = mAtoms[j];
-                    int magnitude = int(1000 * (atom1.mCoord - atom2.mCoord).Magnitude());
+                    int magnitude = int(1000 * (atom1->mCoord - atom2->mCoord).Magnitude());
                     distances[magnitude].push_back(std::make_pair(i, j));
                 }
             }
@@ -407,8 +413,8 @@ struct Molecule
                 std::pair<int, int> bond = tmpBonds[i];
                 const Atom* atom1 = &mAtoms[bond.first];
                 const Atom* atom2 = &mAtoms[bond.second];
-                const std::string name1 = mAtoms[bond.first].mName;
-                const std::string name2 = mAtoms[bond.second].mName;
+                const std::string name1 = atom1->mName;
+                const std::string name2 = atom2->mName;
     
                 const float equilibriumDist = atom1->radius + atom2->radius;
                 const float curDist = it->first / 1000.f;
@@ -417,19 +423,11 @@ struct Molecule
                 {
                     const std::string name = atom1->Z < atom2->Z ? name1 + singleBond + name2 : name2 + singleBond + name1;
                     ++mBonds[name];
-                    bonds[bond.first][bond.second] = bonds[bond.second][bond.first] = 1;
+                    bondsGrid[bond.first][bond.second] = bondsGrid[bond.second][bond.first] = 1;
                     ++num;
                 }
             }
         }
-
-//        for (int i = 0; i < mNumAtoms; ++i)
-//        {
-//            for (int j = 0; j < mNumAtoms; ++j)
-//                std::cout << bonds[i][j] << "\t";
-//            std::cout << std::endl;
-//        }
-//        std::cout << std::endl << std::endl;
     }
 
     bool readFromFile()
@@ -471,7 +469,7 @@ struct Molecule
         vertexes.assign(mNumAtoms, 0);
         dfs(0);
 
-        for (int i = 0; i < mNumAtoms && vertexes[i] && coherent; ++i)
+        for (int i = 0; i < mNumAtoms && coherent; ++i)
             coherent = 1 == vertexes[i];
 
         return coherent;
@@ -528,8 +526,9 @@ struct Molecule
         }
     }
 
-    void energyExcludeCa()
+    void excludeCa()
     {
+        mExcludeCa = true;
         float energy = 0.f;
         const std::string Ca = "Ca";
         for (int i = 0; i < mNumAtoms; ++i)
@@ -538,14 +537,23 @@ struct Molecule
             for (int j = i+1; j < mNumAtoms; ++j)
             {
                 Atom* atom2 = &(mAtoms[j]);
-                if (Ca.compare(atom1->mName) ||
-                    Ca.compare(atom2->mName))
+                if (0 == Ca.compare(atom1->mName) ||
+                    0 == Ca.compare(atom2->mName))
                 {
-                    const float dist = (atom1->mCoord - atom2->mCoord).Magnitude() / a_Bohr;
-                    energy += E_Hartree * atom1->mCharge * atom2->mCharge / dist;
+                    const float dist = (atom1->mCoord - atom2->mCoord).Magnitude();
+                    energy += E_eV * E_ex * atom1->mCharge * atom2->mCharge / dist;
                 }
             }
         }
+        mEnergy -= energy;
+
+//        mBonds["H1Ca"] = 0;
+//        mBonds["O1Ca"] = 0;
+//        mBonds["P1Ca"] = 0;
+//        mBonds["Ca1Ca"] = 0;
+//        mBonds["O2Ca"] = 0;
+//        mBonds["P2Ca"] = 0;
+//        mBonds["Ca2Ca"] = 0;
     }
 
     void fillChargesStat(std::map<int, std::pair<int, float> >& allCharges)
@@ -556,22 +564,12 @@ struct Molecule
             if (0 == atom->Z)
                 std::cout << mName << std::endl;
             if (allCharges.end() == allCharges.find(atom->Z))
-            {
                 allCharges[atom->Z] = std::make_pair(1, atom->mCharge);
-                allCharges[atom->Z * 2] = std::make_pair(1, atom->mCharge);
-                allCharges[atom->Z * 3] = std::make_pair(1, atom->mCharge);
-            }
             else
             {
                 std::pair<int, float>* p = &(allCharges[atom->Z]);
                 ++p->first;
                 p->second += atom->mCharge;
-                // -- max --
-                p = &(allCharges[-atom->Z]);
-                p->second = std::max(atom->mCharge, p->second);
-                // -- min --
-                p = &(allCharges[-2 * atom->Z]);
-                p->second = std::min(atom->mCharge, p->second);
             }
         }
     }
@@ -588,7 +586,7 @@ private:
         const int size = vertexes.size();
         for (int i = 0; i < size; ++i)
         {
-            int bond = bonds[v][i];
+            int bond = bondsGrid[v][i];
             if (!vertexes[i] && bond)
                 dfs(i);
         }
