@@ -101,7 +101,6 @@ bool parseMolgen(const std::string& path)
     return res;
 }
 
-
 const std::string divider = "=====";
 
 void readEnergies(const std::string& energyList, std::map<float, std::string>& energies,
@@ -169,7 +168,6 @@ bool writeMolMap(const int& num, std::map<ull, Molecule*>& molMap, const std::st
             Molecule* mol = itMol->second;
             ofsEnergy << mol->mEnergy << std::endl;
 
-            int j = 1;
             switch (num)
             {
             case 0:
@@ -184,8 +182,9 @@ bool writeMolMap(const int& num, std::map<ull, Molecule*>& molMap, const std::st
             }
 
             for (std::set<std::string>::iterator it = _bonds.begin();
-                 it != _bonds.end(); ++it, ++j)
-                ofsBonds << mol->mBonds[*it] << "\t";
+                 it != _bonds.end(); ++it)
+                if (*it != "ionCa")                
+                    ofsBonds << mol->mBonds[*it] << "\t";
             ofsBonds << std::endl;
         }
 
@@ -198,25 +197,51 @@ bool writeMolMap(const int& num, std::map<ull, Molecule*>& molMap, const std::st
 
 void checkingApproximation()
 {
+    const std::string dir = "complexes/Results/";
     srand(time(NULL));
     const int size = 18;
-    std::ofstream ofsCoef("resCoef.txt");
-    std::vector<int> coefs(size, 0);
-    for (int i = 0; i < size; ++i)
-    {
-        coefs[i] = rand() % 2000 - 1000;
-        ofsCoef << coefs[i] << "\n";
-    }
-    ofsCoef.close();
+//    std::ofstream ofsCoef("resCoef");
+//    std::vector<int> coefs(size, 0);
+//    for (int i = 0; i < size; ++i)
+//    {
+//        coefs[i] = rand() % 2000 - 1000;
+//        ofsCoef << coefs[i] << "\n";
+//    }
+//    ofsCoef.close();
 
-    const uint numEquations = 40;
+    FILE* inRes = fopen("resCoef", "r");
+    std::vector<float> coefs(size);
+ 
+    for (int iii = 0; iii < size; ++iii)
+        fscanf(inRes, "%f", &(coefs[iii]));
+    
+    const uint numEquations = 10;
     std::vector<ull> equations;
 
-    std::cout << std::numeric_limits<ull>::min() << "\n" << 
-                 std::numeric_limits<ull>::max() << std::endl;
+//    std::cout << std::numeric_limits<ull>::min() << "\n" << 
+//                 std::numeric_limits<ull>::max() << std::endl;
 
-    while (equations.size() != numEquations)
+    FILE* inBond = fopen((dir + "bonds.txt").c_str(), "r");
+    FILE* inEnergy = fopen((dir + "energy.txt").c_str(), "r");
+    assert(inBond != NULL);
+    assert(inEnergy != NULL);
+    int bond = 0;
+
+    int k = 0;
+    while (k++ < numEquations)
     {
+        float energy(0.f);
+        float energyStandard(0.f);
+        for (int i = 3; i < numEquations; ++i)
+        {
+            fscanf(inBond, "%d", &bond);
+            energy += bond * coefs[i];
+        }
+        energy += coefs[0];
+        fscanf(inEnergy, "%f", &energyStandard);
+
+        std::cout << energyStandard << "\t\t" << energy << std::endl;
+
         ull N = 0;
         int numBonds = 0;
         for (int i = 0; i < size; ++i)
@@ -271,6 +296,8 @@ int main(int argc, char* argv[])
         }
     }
 
+    checkingApproximation();
+
     std::string resDir = argFile + "/Results/";
     if (!core::isDir(resDir.c_str()))
         core::mkDir(resDir.c_str());
@@ -286,6 +313,22 @@ int main(int argc, char* argv[])
     {
         int num = 0;
         std::map<int, std::pair<int, float> > allCharges;
+        std::ofstream ofsDuplicates((resDir + "duplicates.txt").c_str());
+        std::ofstream ofsUnique((resDir + "unique.txt").c_str());
+
+        std::ofstream ofs((resDir + "parsed").c_str());
+        ofs << "Name\t\t";
+        for (std::set<std::string>::iterator it = _bonds.begin(); it != _bonds.end(); ++it)
+            ofs << *it << "\t";
+        ofs << "ionEnergy\tRealEnergy\tEapprox\n";
+
+        const int numSets = 3;
+        FILE* inRes = fopen("resCoef", "r");
+        std::vector<float> coefs(_bonds.size() + numSets);
+
+        for (int iii = 0, size = _bonds.size() + numSets; iii < size; ++iii)
+            fscanf(inRes, "%f", &(coefs[iii]));
+
         for (uint i = 0; i < files.size(); ++i)
         {
             const std::string dir = argFile + "/" + files[i];
@@ -300,13 +343,8 @@ int main(int argc, char* argv[])
 //                     it != invertedEnergies.end(); ++it)
 //                    energies[it->second] = it->first;
 
-                std::ofstream ofs((resDir + "parsed").c_str());
-                ofs << "\tName\t\t\t";
-                for (std::set<std::string>::iterator it = _bonds.begin(); it != _bonds.end(); ++it)
-                    ofs << *it << "\t";
-                ofs << "\tEnergy\n";
-
                 std::map<ull, Molecule*> molMap;
+                std::set<uint> params;
 
                 std::vector<Molecule> molecules(energies.size(), Molecule());
                 int ii = 0;
@@ -319,20 +357,42 @@ int main(int argc, char* argv[])
                     mol->mName = name;
                     mol->mPath = dir + "/" + name + ".xyz";
 
-                    if (mol->readFromFile())
+                    if (mol->readFromFile() && params.end() == params.find(mol->param))
                     {
                         mol->setNumAtoms();
                         const std::string pathCharges = argFile + "/" + resCharges + mol->mName + ".xyz.out";
                         mol->readCharges(pathCharges);
                         mol->fillDistancesAndBonds1();
+                        bool res = true;
+                        int k = 0;
+                        for (; k < ii && res; k++)
+                            res = !mol->equal(molecules[k]);
 
-                        if (mol->isCoherent())
+                        if (!res)
                         {
+                            ofsDuplicates << mol->mName << "\t\t" << molecules[k-1].mName << std::endl;
+                            ofsDuplicates << mol->mEnergy << "\t\t\t" << molecules[k-1].mEnergy << std::endl;
+                            ofsDuplicates << "___________________________________________\n\n";
+                        }
+
+                        if (mol->isCoherent() && res)
+                        {
+                            ofsUnique << mol->mName << std::endl;
                             if (excludeCa)
                                 mol->excludeCa();
-                            // mol->writeGaussianFile();
+//                             mol->writeGaussianFile();
                             mol->fillChargesStat(allCharges);
-                            ofs << mol->mPath << "\t";
+
+                            float bondsEnergy = coefs[num];
+                            int j = numSets;
+                            for (std::set<std::string>::iterator it = _bonds.begin();
+                                 it != _bonds.end(); ++it, ++j)
+                            {
+                                const float numBonds = mol->mBonds[*it];
+                                bondsEnergy += numBonds * coefs[j];
+                            }
+
+                            ofs << mol->mName << "\t";
                             const ull hash = mol->getHash();
 //                            const uint mustBeBonds = mol->mustBeBonds();
 //                            const uint getBondsNum = mol->getBondsNum();
@@ -343,7 +403,7 @@ int main(int argc, char* argv[])
                                  it != _bonds.end(); ++it)
                                 ofs << mol->mBonds[*it] << "\t";
 
-                            ofs << mol->mEnergy << "\n";
+                            ofs << mol->mIonEnergy << "\t" << mol->mEnergy << "\t\t" << bondsEnergy << std::endl;
                             //ofs << mol.mEnergy << "\n_____________________________________________________________\n";
                         }
                         else
@@ -352,7 +412,7 @@ int main(int argc, char* argv[])
                         ++ii;
                     }
                 }
-                ofs.close();
+
                 std::cout << ii << "\tof\t" << molecules.size() << std::endl;
                 std::cout << "_____________________\n________________\n";
 
@@ -375,9 +435,9 @@ int main(int argc, char* argv[])
 //                }
 //                ofsNew.close();
 
-                //writeMolMap(num, molMap, resDir);
+                writeMolMap(num, molMap, resDir);
 
-                if (true)
+                if (false)
                 {
                     const int numSets = 3;
                     FILE* inRes = fopen("resCoef", "r");
@@ -411,8 +471,14 @@ int main(int argc, char* argv[])
                     }
                 }
                 ++num;
+                ofsDuplicates << "+++++++++++++++++++++++++++++++++++++++\n";
+                ofsUnique << "+++++++++++++++++++++++++++++++++++++++\n";
             }
         }
+
+        ofs.close();
+        ofsUnique.close();
+        ofsDuplicates.close();
 
         if (!allCharges.empty())
         {

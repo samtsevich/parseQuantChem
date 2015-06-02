@@ -56,15 +56,16 @@ void fillMendelAndValences()
     _bonds.insert("O1O");
     _bonds.insert("O1P");
     _bonds.insert("O1Ca");
-    _bonds.insert("P1P");
+    //_bonds.insert("P1P");
     _bonds.insert("P1Ca");
     _bonds.insert("Ca1Ca");
     _bonds.insert("O2O");
     _bonds.insert("O2P");
     _bonds.insert("O2Ca");
     _bonds.insert("P2P");
-    _bonds.insert("P2Ca");
+    //_bonds.insert("P2Ca");
     _bonds.insert("Ca2Ca");
+    _bonds.insert("ionCa");
 
     std::ofstream outfile(resFile_HO.c_str());
     outfile << resFile_HO << std::endl;
@@ -121,6 +122,12 @@ struct Atom
     {}
 };
 
+inline float coloumb(const Atom& atom1, const Atom& atom2)
+{
+    const float dist = (atom1.mCoord - atom2.mCoord).Magnitude();
+    return E_eV * E_ex * atom1.mCharge * atom2.mCharge / dist;
+}
+
 struct Molecule
 {
     int mNumAtoms;
@@ -133,11 +140,12 @@ struct Molecule
     const char* chargeheader;
     const char* dipoleheader;
 
-    ull hash;
+    uint param;
     float mEnergy;
     bool mExcludeCa;
+    float mIonEnergy;
 
-    Molecule() : mNumAtoms(0), coherent(true),
+    Molecule() : mNumAtoms(0), coherent(true), param(0), mIonEnergy(0.f), mEnergy(0.f),
                  chargeheader("Charge="), dipoleheader("Dipole="), mExcludeCa(false)
     {
     }
@@ -193,7 +201,7 @@ struct Molecule
             for (int i = 0; i < mNumAtoms; ++i)
                 for (int j = i+1; j < mNumAtoms; ++j)
                 {
-                    const int dist = 10000.f * (mAtoms[i].mCoord - mAtoms[j].mCoord).Magnitude2();
+                    const int dist = 50.f * (mAtoms[i].mCoord - mAtoms[j].mCoord).Magnitude();
                     distances.push_back(dist);
                 }
             std::sort(distances.begin(), distances.end());
@@ -207,9 +215,10 @@ struct Molecule
         std::vector<uint> second;
         getHz(first);
         mol.getHz(second);
-        
+
         if (!first.empty() && !second.empty() &&
-            first.size() == second.size())
+            first.size() == second.size() &&
+            0 != mName.compare(mol.mName))
         {
             res = true;
             for (int i = 0, size = first.size();
@@ -221,16 +230,17 @@ struct Molecule
 
     ull getHash()
     {
-        hash = 0;
+        ull hash = 0;
         if (!mBonds.empty() && !mAtoms.empty())
         {
             for (std::set<std::string>::iterator it = _bonds.begin();
                  it != _bonds.end(); ++it)
-            {
-                unsigned int bond = mBonds[*it];
-                hash += bond;
-                hash *= 10;
-            }
+                if (*it != "ionCa")
+                {
+                    uint bond = mBonds[*it];
+                    hash += bond;
+                    hash *= 10;
+                }
         }
         return hash;
     }
@@ -367,7 +377,7 @@ struct Molecule
     {
         mBonds.clear();
         std::map<int, std::vector<std::pair<int, int> > > distances;
-    
+
         uint numSemiBonds = -2 * findDoubleOBond();
         //uint numSemiBonds = 0;
         for (int i = 0; i < mNumAtoms; ++i)
@@ -415,7 +425,7 @@ struct Molecule
                 const Atom* atom2 = &mAtoms[bond.second];
                 const std::string name1 = atom1->mName;
                 const std::string name2 = atom2->mName;
-    
+
                 const float equilibriumDist = atom1->radius + atom2->radius;
                 const float curDist = it->first / 1000.f;
                 const float ratioDist = fabs(curDist - equilibriumDist) / equilibriumDist;
@@ -439,22 +449,33 @@ struct Molecule
             {
                 int numAtoms = 0;
                 fscanf(inFile, "%d", &numAtoms);
-                
+
                 setNumAtoms(numAtoms);
-                
+
+                Atom* atomH = 0;
                 for (int j = 0; j < numAtoms; ++j)
                 {
                     Atom* atom = &(mAtoms[j]);
                     char name[4]; // max name of atom have 4 symbols
                     fscanf(inFile, "%s", &name);
                     atom->mName = std::string(name);
+                    atomH = 0 == atom->mName.compare("H") ? atom : 0;
                     atom->Z = _mendel[atom->mName];
                     atom->radius = _radii[atom->mName];
                     fscanf(inFile, "%f %f %f", &(atom->mCoord.x), &(atom->mCoord.y), &(atom->mCoord.z));
                     atom->mValence = _valences[name];
                 }
-                
+
                 fclose(inFile);
+
+                Vector3D sum;
+                if (atomH)
+                {
+                    for (int i = 0; i < mNumAtoms; ++i) 
+                        sum += mAtoms[i].mCoord - atomH->mCoord;
+                }
+
+                param = uint(sum.Magnitude2() * 100);
                 return true;
             }
         }
@@ -524,6 +545,10 @@ struct Molecule
                 }
             }
         }
+
+        for (int i = 0; i < mNumAtoms; ++i)
+            for (int j = i+1; j < mNumAtoms; ++j)
+                mIonEnergy += coloumb(mAtoms[i], mAtoms[j]);
     }
 
     void excludeCa()
@@ -537,15 +562,14 @@ struct Molecule
             for (int j = i+1; j < mNumAtoms; ++j)
             {
                 Atom* atom2 = &(mAtoms[j]);
-                if (0 == Ca.compare(atom1->mName) ||
-                    0 == Ca.compare(atom2->mName))
-                {
-                    const float dist = (atom1->mCoord - atom2->mCoord).Magnitude();
-                    energy += E_eV * E_ex * atom1->mCharge * atom2->mCharge / dist;
-                }
+                if ((0 == Ca.compare(atom1->mName) ||
+                     0 == Ca.compare(atom2->mName)) && 
+                     bondsGrid[i][j] && bondsGrid[j][i])
+                    energy += coloumb(*atom1, *atom2);
             }
         }
-        mEnergy -= energy;
+        mBonds["ionCa"] = energy;
+        //mEnergy -= energy;
 
 //        mBonds["H1Ca"] = 0;
 //        mBonds["O1Ca"] = 0;
