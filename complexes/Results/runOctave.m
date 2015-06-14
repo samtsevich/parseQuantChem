@@ -2,10 +2,11 @@
 % disp('This is a test')
 
 A = dlmread("bonds.txt");
-B = dlmread("energy.txt");
+b = dlmread("energy.txt");
 
-C = A \ B;
-dlmwrite("resCoef", C);
+c = A \ b;
+dlmwrite("resCoef", c);
+dlmwrite("resEner", A*c);
 
 disp('Octave script finished')
 

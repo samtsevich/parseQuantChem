@@ -56,7 +56,7 @@ void fillMendelAndValences()
     _bonds.insert("O1O");
     _bonds.insert("O1P");
     _bonds.insert("O1Ca");
-    //_bonds.insert("P1P");
+    _bonds.insert("P1P");
     _bonds.insert("P1Ca");
     _bonds.insert("Ca1Ca");
     _bonds.insert("O2O");
@@ -66,6 +66,9 @@ void fillMendelAndValences()
     //_bonds.insert("P2Ca");
     _bonds.insert("Ca2Ca");
     _bonds.insert("ionCa");
+    _bonds.insert("O1P^2");
+    _bonds.insert("O1P^3");
+    _bonds.insert("combo"); // H1P + O1P + O2P + P1Ca
 
     std::ofstream outfile(resFile_HO.c_str());
     outfile << resFile_HO << std::endl;
@@ -141,12 +144,14 @@ struct Molecule
     const char* dipoleheader;
 
     uint param;
-    float mEnergy;
+    float mEnergy;  // Gibbs energy
     bool mExcludeCa;
     float mIonEnergy;
+    float mInernalEnergy;
+    float mP_Charge;
 
-    Molecule() : mNumAtoms(0), coherent(true), param(0), mIonEnergy(0.f), mEnergy(0.f),
-                 chargeheader("Charge="), dipoleheader("Dipole="), mExcludeCa(false)
+    Molecule() : mNumAtoms(0), coherent(true), param(0), mIonEnergy(0.f), mEnergy(0.f), mP_Charge(0.f),
+                 mInernalEnergy(0.f), chargeheader("Charge="), dipoleheader("Dipole="), mExcludeCa(false)
     {
     }
 
@@ -279,6 +284,7 @@ struct Molecule
             {
                 int endAtom = -1;
                 uint numNeighborAtoms = 0;
+                Atom* end = 0;
                 const Atom* atom2 = 0;
                 for (uint j = 0; j < size; ++j)
                 {
@@ -290,20 +296,22 @@ struct Molecule
                     if (ratio < 0.2f)
                     {
                         ++numNeighborAtoms;
+                        end = &mAtoms[j];
                         endAtom = j;
                     }
                 }
 
-                if (numNeighborAtoms == 1)
+                if (numNeighborAtoms == 1 && 0 != end->mName.compare("H"))
                 {
+                    //atom2 = &mAtoms[endAtom];
                     bondsGrid[i][endAtom] = bondsGrid[endAtom][i] = 2;
-                    std::string name = _mendel["O"] < atom2->Z ?
-                                std::string("O2") + atom2->mName : atom2->mName + std::string("2O");    // here 2-Oxygen or Oxygen-2
+                    std::string name = _mendel["O"] < end->Z ?
+                                std::string("O2") + end->mName : end->mName + std::string("2O");    // here 2-Oxygen or Oxygen-2
                     mBonds[name] += 2;
 
                     ++numDoubleBonds;
                     ofs << mName << "\t" << i << "\t" << endAtom << "\t" << mEnergy << std::endl;
-                    std::cout << mName << "\t" << i << "\t" << endAtom << "\t" << mEnergy << std::endl;
+                    //std::cout << mName << "\t" << i << "\t" << endAtom << "\t" << mEnergy << std::endl;
                 }
             }
         }
@@ -315,7 +323,6 @@ struct Molecule
     // Fill distances files and bonds
     void fillDistancesAndBonds(std::ofstream& ofs)
     {
-
         std::map<std::string, int> bonds;       // num bonds in molecule
         const int size = mAtoms.size();
 
@@ -323,7 +330,6 @@ struct Molecule
         std::vector<char> tmp(size, 0);
         for (int i = 0; i < size; ++i)
             matrixBonds.push_back(tmp);
-
 
         std::map<std::pair<std::string,int>, int> binding;     // respond to current binding in molecule
 
@@ -438,6 +444,10 @@ struct Molecule
                 }
             }
         }
+
+//        mBonds["O1P^2"] = mBonds["O1P"] * mBonds["O1P"];
+//        mBonds["O1P^3"] = mBonds["O1P^2"] * mBonds["O1P"];
+//        mBonds["combo"] = mBonds["H1P"] + mBonds["O1P"] + 2*mBonds["O2P"] + mBonds["P1Ca"];
     }
 
     bool readFromFile()
@@ -452,14 +462,15 @@ struct Molecule
 
                 setNumAtoms(numAtoms);
 
-                Atom* atomH = 0;
+                Atom* atomP = 0;
                 for (int j = 0; j < numAtoms; ++j)
                 {
                     Atom* atom = &(mAtoms[j]);
                     char name[4]; // max name of atom have 4 symbols
                     fscanf(inFile, "%s", &name);
                     atom->mName = std::string(name);
-                    atomH = 0 == atom->mName.compare("H") ? atom : 0;
+                    if (!atomP)
+                        atomP = 0 == atom->mName.compare("P") ? atom : 0;
                     atom->Z = _mendel[atom->mName];
                     atom->radius = _radii[atom->mName];
                     fscanf(inFile, "%f %f %f", &(atom->mCoord.x), &(atom->mCoord.y), &(atom->mCoord.z));
@@ -469,10 +480,10 @@ struct Molecule
                 fclose(inFile);
 
                 Vector3D sum;
-                if (atomH)
+                if (atomP)
                 {
                     for (int i = 0; i < mNumAtoms; ++i) 
-                        sum += mAtoms[i].mCoord - atomH->mCoord;
+                        sum += mAtoms[i].mCoord - atomP->mCoord;
                 }
 
                 param = uint(sum.Magnitude2() * 100);
@@ -541,6 +552,8 @@ struct Molecule
                         iss1 >> n >> name >> chargeValue;
                         if (0 == name.compare(mAtoms[i].mName.c_str()))
                             mAtoms[i].mCharge = chargeValue;
+                        if (0 == name.compare("P"))
+                            mP_Charge = chargeValue;
                     }
                 }
             }

@@ -1,0 +1,400 @@
+ Entering Gaussian System, Link 0=/home/timn/tmp/g03.e01/g03
+ Input=Ca3PO4_178.mol2c_plusQ.z51185.zip.xyz.gjf
+ Output=Ca3PO4_178.mol2c_plusQ.z51185.zip.xyz.out
+ Initial command:
+ /home/timn/tmp/g03.e01/l1.exe /home/timn/tmp/g03.e01/Gau-11834.inp -scrdir=/home/timn/tmp/g03.e01/
+ Default is to use a total of   2 processors:
+                                2 via shared-memory
+                                1 via Linda
+ Entering Link 1 = /home/timn/tmp/g03.e01/l1.exe PID=     11835.
+  
+ Copyright (c) 1988,1990,1992,1993,1995,1998,2003,2004,2007, Gaussian, Inc.
+                  All Rights Reserved.
+  
+ This is the Gaussian(R) 03 program.  It is based on the
+ the Gaussian(R) 98 system (copyright 1998, Gaussian, Inc.),
+ the Gaussian(R) 94 system (copyright 1995, Gaussian, Inc.),
+ the Gaussian 92(TM) system (copyright 1992, Gaussian, Inc.),
+ the Gaussian 90(TM) system (copyright 1990, Gaussian, Inc.),
+ the Gaussian 88(TM) system (copyright 1988, Gaussian, Inc.),
+ the Gaussian 86(TM) system (copyright 1986, Carnegie Mellon
+ University), and the Gaussian 82(TM) system (copyright 1983,
+ Carnegie Mellon University). Gaussian is a federally registered
+ trademark of Gaussian, Inc.
+  
+ This software contains proprietary and confidential information,
+ including trade secrets, belonging to Gaussian, Inc.
+  
+ This software is provided under written license and may be
+ used, copied, transmitted, or stored only in accord with that
+ written license.
+  
+ The following legend is applicable only to US Government
+ contracts under FAR:
+  
+                    RESTRICTED RIGHTS LEGEND
+  
+ Use, reproduction and disclosure by the US Government is
+ subject to restrictions as set forth in subparagraphs (a)
+ and (c) of the Commercial Computer Software - Restricted
+ Rights clause in FAR 52.227-19.
+  
+ Gaussian, Inc.
+ 340 Quinnipiac St., Bldg. 40, Wallingford CT 06492
+  
+  
+ ---------------------------------------------------------------
+ Warning -- This program may not be used in any manner that
+ competes with the business of Gaussian, Inc. or will provide
+ assistance to any competitor of Gaussian, Inc.  The licensee
+ of this program is prohibited from giving any competitor of
+ Gaussian, Inc. access to this program.  By using this program,
+ the user acknowledges that Gaussian, Inc. is engaged in the
+ business of creating and licensing software in the field of
+ computational chemistry and represents and warrants to the
+ licensee that it is not a competitor of Gaussian, Inc. and that
+ it will not use this program in any manner prohibited above.
+ ---------------------------------------------------------------
+  
+
+ Cite this work as:
+ Gaussian 03, Revision E.01,
+ M. J. Frisch, G. W. Trucks, H. B. Schlegel, G. E. Scuseria, 
+ M. A. Robb, J. R. Cheeseman, J. A. Montgomery, Jr., T. Vreven, 
+ K. N. Kudin, J. C. Burant, J. M. Millam, S. S. Iyengar, J. Tomasi, 
+ V. Barone, B. Mennucci, M. Cossi, G. Scalmani, N. Rega, 
+ G. A. Petersson, H. Nakatsuji, M. Hada, M. Ehara, K. Toyota, 
+ R. Fukuda, J. Hasegawa, M. Ishida, T. Nakajima, Y. Honda, O. Kitao, 
+ H. Nakai, M. Klene, X. Li, J. E. Knox, H. P. Hratchian, J. B. Cross, 
+ V. Bakken, C. Adamo, J. Jaramillo, R. Gomperts, R. E. Stratmann, 
+ O. Yazyev, A. J. Austin, R. Cammi, C. Pomelli, J. W. Ochterski, 
+ P. Y. Ayala, K. Morokuma, G. A. Voth, P. Salvador, J. J. Dannenberg, 
+ V. G. Zakrzewski, S. Dapprich, A. D. Daniels, M. C. Strain, 
+ O. Farkas, D. K. Malick, A. D. Rabuck, K. Raghavachari, 
+ J. B. Foresman, J. V. Ortiz, Q. Cui, A. G. Baboul, S. Clifford, 
+ J. Cioslowski, B. B. Stefanov, G. Liu, A. Liashenko, P. Piskorz, 
+ I. Komaromi, R. L. Martin, D. J. Fox, T. Keith, M. A. Al-Laham, 
+ C. Y. Peng, A. Nanayakkara, M. Challacombe, P. M. W. Gill, 
+ B. Johnson, W. Chen, M. W. Wong, C. Gonzalez, and J. A. Pople, 
+ Gaussian, Inc., Wallingford CT, 2004.
+ 
+ ******************************************
+ Gaussian 03:  EM64T-G03RevE.01 11-Sep-2007
+                12-Jun-2015 
+ ******************************************
+ %nproc=2
+ Will use up to    2 processors via shared memory.
+ Default route:  MP2=Direct MaxDisk=2000MB
+ ----------------------------------------------------
+ # b3lyp/6-31+G(d,p) int=ultrafine pop=(ReadRadii,MK)
+ ----------------------------------------------------
+
+ Warning!  SCF SP cutoffs with diffuse functions may be unreliable.
+ Consider SCF=Tight
+
+ 1/38=1/1;
+ 2/17=6,18=5,40=1/2;
+ 3/5=1,6=6,7=111,11=2,16=1,25=1,30=1,74=-5,75=5/1,2,3;
+ 4//1;
+ 5/5=2,32=1,38=5/2;
+ 6/7=2,8=2,9=2,10=2,15=8,20=101,28=1/1,2;
+ 99/5=1,9=1/99;
+ -------------------------------------
+ Ca3PO4_178.mol2c_plusQ.z51185.zip.xyz
+ -------------------------------------
+ Symbolic Z-matrix:
+ Charge =  1 Multiplicity = 1
+ O                    -0.80556   1.24418   0.92076 
+ O                    -0.67312  -1.31695   0.92453 
+ O                     1.47926   0.07694   0.92178 
+ O                    -0.00022  -0.00234  -1.71134 
+ P                     0.00024   0.0017    1.71813 
+ Ca                    0.88555   1.73266  -0.57174 
+ Ca                    1.05898  -1.63366  -0.56908 
+ Ca                   -1.94485  -0.10101  -0.57007 
+ 
+                          Input orientation:                          
+ ---------------------------------------------------------------------
+ Center     Atomic     Atomic              Coordinates (Angstroms)
+ Number     Number      Type              X           Y           Z
+ ---------------------------------------------------------------------
+    1          8             0       -0.805560    1.244180    0.920760
+    2          8             0       -0.673120   -1.316950    0.924530
+    3          8             0        1.479260    0.076940    0.921780
+    4          8             0       -0.000220   -0.002340   -1.711340
+    5         15             0        0.000240    0.001700    1.718130
+    6         20             0        0.885550    1.732660   -0.571740
+    7         20             0        1.058980   -1.633660   -0.569080
+    8         20             0       -1.944850   -0.101010   -0.570070
+ ---------------------------------------------------------------------
+                    Distance matrix (angstroms):
+                    1          2          3          4          5
+     1  O    0.000000
+     2  O    2.564555   0.000000
+     3  O    2.565707   2.564308   0.000000
+     4  O    3.021644   3.021391   3.021335   0.000000
+     5  P    1.681924   1.679897   1.681468   3.429472   0.000000
+     6  Ca   2.307818   3.737432   2.307488   2.256879   3.003914
+     7  Ca   3.738729   2.308971   2.307694   2.255630   3.004440
+     8  Ca   2.308699   2.308601   3.739226   2.256949   3.004960
+                    6          7          8
+     6  Ca   0.000000
+     7  Ca   3.370786   0.000000
+     8  Ca   3.372464   3.372241   0.000000
+ Stoichiometry    Ca3O4P(1+)
+ Framework group  C1[X(Ca3O4P)]
+ Deg. of freedom    18
+ Full point group                 C1
+ Largest Abelian subgroup         C1      NOp   1
+ Largest concise Abelian subgroup C1      NOp   1
+                         Standard orientation:                         
+ ---------------------------------------------------------------------
+ Center     Atomic     Atomic              Coordinates (Angstroms)
+ Number     Number      Type              X           Y           Z
+ ---------------------------------------------------------------------
+    1          8             0       -0.805430    1.244265    0.920760
+    2          8             0       -0.673259   -1.316879    0.924530
+    3          8             0        1.479267    0.076785    0.921780
+    4          8             0       -0.000221   -0.002339   -1.711340
+    5         15             0        0.000239    0.001701    1.718130
+    6         20             0        0.885731    1.732567   -0.571740
+    7         20             0        1.058808   -1.633771   -0.569080
+    8         20             0       -1.944861   -0.100805   -0.570070
+ ---------------------------------------------------------------------
+ Rotational constants (GHZ):      1.0154123      1.0147846      0.9031613
+ Standard basis: 6-31+G(d,p) (6D, 7F)
+ There are   180 symmetry adapted basis functions of A   symmetry.
+ Integral buffers will be    131072 words long.
+ Raffenetti 2 integral format.
+ Two-electron integral symmetry is turned on.
+   180 basis functions,   424 primitive gaussians,   180 cartesian basis functions
+    53 alpha electrons       53 beta electrons
+       nuclear repulsion energy       952.5235198857 Hartrees.
+ NAtoms=    8 NActive=    8 NUniq=    8 SFac= 7.50D-01 NAtFMM=   80 NAOKFM=F Big=F
+ One-electron integrals computed using PRISM.
+ NBasis=   180 RedAO= T  NBF=   180
+ NBsUse=   180 1.00D-06 NBFU=   180
+ Harris functional with IExCor=  402 diagonalized for initial guess.
+ ExpMin= 7.10D-03 ExpMax= 3.53D+04 ExpMxC= 5.30D+03 IAcc=3 IRadAn=         5 AccDes= 0.00D+00
+ HarFok:  IExCor= 402 AccDes= 0.00D+00 IRadAn=         5 IDoV=1
+ ScaDFX=  1.000000  1.000000  1.000000  1.000000
+ Initial guess orbital symmetries:
+       Occupied  (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A)
+       Virtual   (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A)
+ The electronic state of the initial guess is 1-A.
+ Requested convergence on RMS density matrix=1.00D-04 within 128 cycles.
+ Requested convergence on MAX density matrix=1.00D-02.
+ Requested convergence on             energy=1.00D-02.
+ No special actions if energy rises.
+ SCF Done:  E(RB+HF-LYP) =  -2675.07103948     A.U. after    8 cycles
+             Convg  =    0.8170D-04             -V/T =  2.0028
+             S**2   =   0.0000
+
+ **********************************************************************
+
+            Population analysis using the SCF density.
+
+ **********************************************************************
+
+ Orbital symmetries:
+       Occupied  (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A)
+       Virtual   (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A) (A)
+                 (A) (A) (A) (A) (A) (A) (A)
+ The electronic state is 1-A.
+ Alpha  occ. eigenvalues -- -145.49652-145.49636-145.49625 -77.25044 -19.21272
+ Alpha  occ. eigenvalues --  -19.21194 -19.21162 -19.15926 -15.56485 -15.56470
+ Alpha  occ. eigenvalues --  -15.56459 -12.69684 -12.69669 -12.69661 -12.69658
+ Alpha  occ. eigenvalues --  -12.69646 -12.69635 -12.69614 -12.69599 -12.69588
+ Alpha  occ. eigenvalues --   -6.70073  -4.86421  -4.86421  -4.85885  -1.93822
+ Alpha  occ. eigenvalues --   -1.93742  -1.93729  -1.22368  -1.21694  -1.21686
+ Alpha  occ. eigenvalues --   -1.21301  -1.21137  -1.21065  -1.21057  -1.20645
+ Alpha  occ. eigenvalues --   -1.20633  -1.06742  -1.00364  -1.00309  -0.90919
+ Alpha  occ. eigenvalues --   -0.62626  -0.50518  -0.50502  -0.47942  -0.43345
+ Alpha  occ. eigenvalues --   -0.43337  -0.38339  -0.38311  -0.38160  -0.36118
+ Alpha  occ. eigenvalues --   -0.36112  -0.34570  -0.30845
+ Alpha virt. eigenvalues --   -0.19948  -0.18031  -0.18022  -0.12555  -0.12549
+ Alpha virt. eigenvalues --   -0.10893  -0.09479  -0.09475  -0.08339  -0.07771
+ Alpha virt. eigenvalues --   -0.06545  -0.06114  -0.06113  -0.04762  -0.04714
+ Alpha virt. eigenvalues --   -0.04713  -0.04672  -0.04472  -0.04470  -0.04003
+ Alpha virt. eigenvalues --   -0.04002  -0.03232  -0.02943  -0.02941  -0.02360
+ Alpha virt. eigenvalues --   -0.02353  -0.00864   0.01031   0.02178   0.02620
+ Alpha virt. eigenvalues --    0.02621   0.04574   0.04580   0.05231   0.06003
+ Alpha virt. eigenvalues --    0.06007   0.06294   0.06297   0.07296   0.07300
+ Alpha virt. eigenvalues --    0.07383   0.07664   0.07675   0.07822   0.08478
+ Alpha virt. eigenvalues --    0.10679   0.10691   0.11340   0.11801   0.13675
+ Alpha virt. eigenvalues --    0.15677   0.15683   0.19890   0.19893   0.20382
+ Alpha virt. eigenvalues --    0.22079   0.22095   0.23492   0.23987   0.25317
+ Alpha virt. eigenvalues --    0.25958   0.25963   0.30043   0.31451   0.31457
+ Alpha virt. eigenvalues --    0.35748   0.35989   0.36007   0.37841   0.39082
+ Alpha virt. eigenvalues --    0.39100   0.39785   0.45808   0.45833   0.53609
+ Alpha virt. eigenvalues --    0.53629   0.55839   0.63370   0.63380   0.67686
+ Alpha virt. eigenvalues --    0.82892   0.86923   0.86960   0.94073   0.94143
+ Alpha virt. eigenvalues --    1.14546   1.16764   1.16782   1.18044   1.20806
+ Alpha virt. eigenvalues --    1.21984   1.22000   1.23415   1.23427   1.28217
+ Alpha virt. eigenvalues --    1.34154   1.34175   1.36421   1.54470   1.54478
+ Alpha virt. eigenvalues --    1.57708   1.68392   1.71637   1.73153   1.73180
+ Alpha virt. eigenvalues --    1.77485   1.77496   1.87080   1.87386   1.87395
+ Alpha virt. eigenvalues --    1.88092   1.92077   1.92085   1.93348   1.98423
+ Alpha virt. eigenvalues --    1.98438   2.03024   2.03046   2.14824   2.38182
+ Alpha virt. eigenvalues --    2.55069   2.55246   3.54385   4.05636   4.14274
+ Alpha virt. eigenvalues --    4.14306   4.31269
+          Condensed to atoms (all electrons):
+              1          2          3          4          5          6
+     1  O    8.964706   0.058492   0.058382   0.023799  -0.199692   0.060118
+     2  O    0.058492   8.967228   0.058712   0.023934  -0.201430   0.006401
+     3  O    0.058382   0.058712   8.965717   0.023960  -0.200562   0.060003
+     4  O    0.023799   0.023934   0.023960   8.852741  -0.040040   0.122060
+     5  P   -0.199692  -0.201430  -0.200562  -0.040040  14.442516   0.033414
+     6  Ca   0.060118   0.006401   0.060003   0.122060   0.033414  18.396590
+     7  Ca   0.006184   0.059584   0.059770   0.122356   0.034110  -0.047640
+     8  Ca   0.059958   0.059674   0.006216   0.122238   0.033862  -0.047428
+              7          8
+     1  O    0.006184   0.059958
+     2  O    0.059584   0.059674
+     3  O    0.059770   0.006216
+     4  O    0.122356   0.122238
+     5  P    0.034110   0.033862
+     6  Ca  -0.047640  -0.047428
+     7  Ca  18.396600  -0.047414
+     8  Ca  -0.047414  18.395860
+ Mulliken atomic charges:
+              1
+     1  O   -1.031948
+     2  O   -1.032594
+     3  O   -1.032200
+     4  O   -1.251048
+     5  P    1.097823
+     6  Ca   1.416481
+     7  Ca   1.416450
+     8  Ca   1.417034
+ Sum of Mulliken charges=   1.00000
+ Atomic charges with hydrogens summed into heavy atoms:
+              1
+     1  O   -1.031948
+     2  O   -1.032594
+     3  O   -1.032200
+     4  O   -1.251048
+     5  P    1.097823
+     6  Ca   1.416481
+     7  Ca   1.416450
+     8  Ca   1.417034
+ Sum of Mulliken charges=   1.00000
+ Electronic spatial extent (au):  <R**2>=  1510.7577
+ Charge=     1.0000 electrons
+ Dipole moment (field-independent basis, Debye):
+    X=    -0.0056    Y=    -0.0134    Z=    -8.2334  Tot=     8.2334
+ Quadrupole moment (field-independent basis, Debye-Ang):
+   XX=   -39.9888   YY=   -40.0339   ZZ=   -90.0165
+   XY=     0.0162   XZ=    -0.0033   YZ=    -0.0497
+ Traceless Quadrupole moment (field-independent basis, Debye-Ang):
+   XX=    16.6910   YY=    16.6458   ZZ=   -33.3368
+   XY=     0.0162   XZ=    -0.0033   YZ=    -0.0497
+ Octapole moment (field-independent basis, Debye-Ang**2):
+  XXX=   -58.0534  YYY=     8.7876  ZZZ=    -1.7082  XYY=    57.9348
+  XXY=    -9.0780  XXZ=   -46.7028  XZZ=     0.0057  YZZ=     0.0897
+  YYZ=   -46.6905  XYZ=    -0.0452
+ Hexadecapole moment (field-independent basis, Debye-Ang**3):
+ XXXX=  -416.2922 YYYY=  -416.1309 ZZZZ=  -721.7480 XXXY=     0.0966
+ XXXZ=    15.2842 YYYX=     0.0407 YYYZ=    -2.6055 ZZZX=    -0.0284
+ ZZZY=    -0.2710 XXYY=  -138.7373 XXZZ=  -187.6982 YYZZ=  -187.6335
+ XXYZ=     2.3076 YYXZ=   -15.2785 ZZXY=     0.0321
+ N-N= 9.525235198857D+02 E-N=-8.229518515751D+03  KE= 2.667689377269D+03
+ Merz-Kollman atomic radii used.
+ Read replacement radii for each type of atom:
+ Rad(20) =   1.188000000000D+00
+ Atom Element Radius
+    1     8    1.40
+    2     8    1.40
+    3     8    1.40
+    4     8    1.40
+    5    15    1.80
+    6    20    1.19
+    7    20    1.19
+    8    20    1.19
+
+ **********************************************************************
+
+            Electrostatic Properties Using The SCF Density
+
+ **********************************************************************
+
+       Atomic Center    1 is at  -0.805430  1.244265  0.920760
+       Atomic Center    2 is at  -0.673259 -1.316879  0.924530
+       Atomic Center    3 is at   1.479267  0.076785  0.921780
+       Atomic Center    4 is at  -0.000221 -0.002339 -1.711340
+       Atomic Center    5 is at   0.000239  0.001701  1.718130
+       Atomic Center    6 is at   0.885731  1.732567 -0.571740
+       Atomic Center    7 is at   1.058808 -1.633771 -0.569080
+       Atomic Center    8 is at  -1.944861 -0.100805 -0.570070
+     681 points will be used for fitting atomic charges
+ Fitting point charges to eletrostatic potential
+ Charges from ESP fit, RMS=   0.00612 RRMS=   0.03752:
+ Charge=   1.00000 Dipole=    -0.0307    -0.0202    -8.4120 Tot=     8.4121
+              1
+     1  O   -0.944381
+     2  O   -0.946444
+     3  O   -0.950572
+     4  O   -1.636866
+     5  P    0.521077
+     6  Ca   1.651514
+     7  Ca   1.653884
+     8  Ca   1.651788
+ -----------------------------------------------------------------
+
+              Electrostatic Properties (Atomic Units)
+
+ -----------------------------------------------------------------
+    Center     Electric         -------- Electric Field --------
+               Potential          X             Y             Z
+ -----------------------------------------------------------------
+    1 Atom    -22.250439
+    2 Atom    -22.252428
+    3 Atom    -22.250989
+    4 Atom    -22.290613
+    5 Atom    -53.968043
+    6 Atom    -80.043309
+    7 Atom    -80.043319
+    8 Atom    -80.043128
+ -----------------------------------------------------------------
+ 1\1\GINC-N031\SP\RB3LYP\6-31+G(d,p)\Ca3O4P1(1+)\TIMN\12-Jun-2015\0\\# 
+ b3lyp/6-31+G(d,p) int=ultrafine pop=(ReadRadii,MK)\\Ca3PO4_178.mol2c_p
+ lusQ.z51185.zip.xyz\\1,1\O,0,-0.80556,1.24418,0.92076\O,0,-0.67312,-1.
+ 31695,0.92453\O,0,1.47926,0.07694,0.92178\O,0,-0.00022,-0.00234,-1.711
+ 34\P,0,0.00024,0.0017,1.71813\Ca,0,0.88555,1.73266,-0.57174\Ca,0,1.058
+ 98,-1.63366,-0.56908\Ca,0,-1.94485,-0.10101,-0.57007\\Version=EM64T-G0
+ 3RevE.01\State=1-A\HF=-2675.0710395\RMSD=8.170e-05\Thermal=0.\Dipole=-
+ 0.0022077,-0.0052571,-3.2392722\PG=C01 [X(Ca3O4P1)]\\@
+
+
+ IT IS A SIMPLE TASK TO MAKE THINGS COMPLEX,
+ BUT A COMPLEX TASK TO MAKE THEM SIMPLE.
+ Job cpu time:  0 days  0 hours  1 minutes 41.6 seconds.
+ File lengths (MBytes):  RWF=     32 Int=      0 D2E=      0 Chk=     11 Scr=      1
+ Normal termination of Gaussian 03 at Fri Jun 12 17:40:02 2015.
