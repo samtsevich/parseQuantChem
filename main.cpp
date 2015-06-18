@@ -8,7 +8,6 @@
 #include <string.h>
 #include <algorithm>
 #include <map>
-#include <matrix.h>
 #include <limits>
 
 #include "Vector3D.h"
@@ -33,6 +32,15 @@ const char* middlePartAtom = "   1  LIG11   ";
 
 const std::string molecule = "mol_";
 const std::string ext = ".mol2";
+
+
+struct myclass {
+  bool operator() (std::pair<std::string, float> i,std::pair<std::string, float> j)
+  {
+      return (i.second < j.second);
+  }
+
+} myobject;
 
 bool parseMolgen(const std::string& path)
 {
@@ -104,7 +112,7 @@ bool parseMolgen(const std::string& path)
 const std::string divider = "=====";
 
 void readEnergies(const std::string& energyList, std::map<float, std::pair<std::string, float> >& energies,
-                  std::map<std::string, float>& invertedEnergies)
+                  std::vector<std::pair<std::string, float> >& invertedEnergies)
 {
     energies.clear();
     invertedEnergies.clear();
@@ -125,9 +133,11 @@ void readEnergies(const std::string& energyList, std::map<float, std::pair<std::
 //             size_t pose = name.find_last_of(".");
 //             name = std::string::npos == pose ? name : std::string(name.begin(), name.begin() + pose);
              energies[energyGibbs] = std::make_pair(name, internalEnergy);
-             invertedEnergies[name] = energyGibbs;
+             invertedEnergies.push_back(std::make_pair(name, energyGibbs));
          }
     }
+
+    std::sort(invertedEnergies.begin(), invertedEnergies.end(), myobject);
 }
 
 bool readSets(const std::string& path, std::vector<std::vector<std::string> >& sets)
@@ -156,11 +166,9 @@ bool readSets(const std::string& path, std::vector<std::vector<std::string> >& s
     return res;
 }
 
-bool writeMolMap(const int& num, std::map<ull, Molecule*>& molMap, const std::string& resDir)
+bool writeMolMap(const int& num, std::vector<Molecule*>& molMap, const std::string& resDir)
 {
     if (!molMap.empty()) {
-        int j = 0;
-
         std::ofstream ofsBonds((resDir + "bonds.txt").c_str(), std::ios_base::app);
         std::ofstream ofsEnergy((resDir + "energy.txt").c_str(), std::ios_base::app);
         std::ofstream ofsCharges((resDir + "charge.txt").c_str(), std::ios_base::app);
@@ -168,13 +176,13 @@ bool writeMolMap(const int& num, std::map<ull, Molecule*>& molMap, const std::st
 
         std::vector<std::vector<int> > bonds;
         std::vector<float> energies;
-        for (std::map<ull, Molecule*>::iterator itMol = molMap.begin();
-             itMol != molMap.end(); ++itMol, ++j)
+        for (std::vector<Molecule*>::iterator itMol = molMap.begin();
+             itMol != molMap.end(); ++itMol)
         {
             std::vector<int> curBond;
             curBond.push_back(1);
 
-            Molecule* mol = itMol->second;
+            Molecule* mol = *itMol;
             for (int i = 0; i < mol->mNumAtoms; ++i)
             {
                 Atom* atom1 = &mol->mAtoms[i];
@@ -214,9 +222,10 @@ bool writeMolMap(const int& num, std::map<ull, Molecule*>& molMap, const std::st
                     curBond.push_back(mol->mBonds[*it]);
                     ofsBonds << mol->mBonds[*it] << "\t";
                 }
+            ofsBonds << std::endl;
             bonds.push_back(curBond);
             energies.push_back(mol->mEnergy);
-            ofsBonds << mol->mP_Charge << std::endl;
+            //ofsBonds << mol->mP_Charge << std::endl;
         }
 
 //        ofsBonds << "______________________\n______________________\n______________________\n";
@@ -379,7 +388,8 @@ int main(int argc, char* argv[])
             ofs << *it << "\t";
         ofs << "P_cahrge\tionEnergy\tRealGibbsEnergy\tRealInternalEnergy\tEapprox\n";
 
-        uint glob(0), geom(0), grid(0), depth(0);
+        std::ofstream ofsNum((resDir + "num.txt").c_str());
+        uint glob(0), geom(0), depth(0);
 
         const int numSets = 4;
         FILE* inRes = fopen("resCoef", "r");
@@ -395,22 +405,20 @@ int main(int argc, char* argv[])
             if (core::isDir(dir.c_str()) && core::isFileExists(energyList.c_str()))
             {
                 std::map<float, std::pair<std::string, float> > energies;
-                std::map<std::string, float> invertedEnergies;
+                std::vector<std::pair<std::string, float> > invertedEnergies;
                 readEnergies(energyList, energies, invertedEnergies);
 
 //                for (std::map<std::string, float>::iterator it = invertedEnergies.begin();
 //                     it != invertedEnergies.end(); ++it)
 //                    energies[it->second] = it->first;
 
-                std::map<ull, Molecule*> molMap;
+                std::vector<Molecule*> molMap;
                 std::set<uint> params;
 
-                std::vector<Molecule> molecules(energies.size(), Molecule());
+                std::vector<Molecule> molecules(invertedEnergies.size(), Molecule());
                 int ii = 0;
-                for (std::map<std::string, float>::iterator it = invertedEnergies.begin();
+                for (std::vector<std::pair<std::string, float> >::iterator it = invertedEnergies.begin();
                      it != invertedEnergies.end(); ++it)
-//                for (std::map<float, std::pair<std::string, float> >::iterator it = energies.begin();
-//                     it != energies.end(); ++it)
                 {
                     const std::string name = it->first;
                     Molecule* mol = &(molecules[ii]);
@@ -439,11 +447,10 @@ int main(int argc, char* argv[])
                             ofsDuplicates << mol->mEnergy << "\t\t\t" << molecules[k-1].mEnergy << std::endl;
                             ofsDuplicates << "___________________________________________\n\n";
                         }
-                        else
-                            ++grid;
 
                         if (fabs(mol->mP_Charge) > 0.001f && mol->isCoherent() && res)
                         {
+                            ++depth;
                             ofsUnique << mol->mName << std::endl;
                             if (excludeCa)
                                 mol->excludeCa();
@@ -462,10 +469,11 @@ int main(int argc, char* argv[])
 
                             ofs << mol->mName << "\t";
                             const ull hash = mol->getHash();
+                            molMap.push_back(mol);
 //                            const uint mustBeBonds = mol->mustBeBonds();
 //                            const uint getBondsNum = mol->getBondsNum();
-                            if (molMap.find(hash) == molMap.end())
-                                molMap[hash] = mol;
+//                            if (molMap.find(hash) == molMap.end())
+//                                molMap[hash] = mol;
 
                             for (std::set<std::string>::iterator it = _bonds.begin();
                                  it != _bonds.end(); ++it)
@@ -507,40 +515,8 @@ int main(int argc, char* argv[])
                 //ofs.close();
                 //ofsDuplicates.close();
 
-                if (false)
-                {
-                    const int numSets = 3;
-                    FILE* inRes = fopen("resCoef", "r");
-                    std::vector<float> coefs(_bonds.size() + numSets);
-
-                    for (int i = 0, size = _bonds.size() + numSets; i < size; ++i)
-                        fscanf(inRes, "%f", &(coefs[i]));
-
-                    if (!coefs.empty())
-                    {
-                        float RSS = 0.f;
-                        for (std::map<ull, Molecule*>::iterator itMol = molMap.begin();
-                             itMol != molMap.end(); ++itMol)
-                        {
-                            Molecule* mol = itMol->second;
-
-                            float bondsEnergy = coefs[num];
-                            int j = numSets;
-                            for (std::set<std::string>::iterator it = _bonds.begin();
-                                 it != _bonds.end(); ++it, ++j)
-                            {
-                                const float numBonds = mol->mBonds[*it];
-                                bondsEnergy += numBonds * coefs[j];
-                            }
-
-                            const float diff = mol->mEnergy - bondsEnergy;
-                            RSS += diff * diff / molMap.size();
-                        }
-                        std::cout << sqrt(RSS) << std::endl;
-                        std::cout << "_____________________\n\n";
-                    }
-                }
                 ++num;
+                ofsNum << "glob = " << glob << "\ngeom = " << geom << "\ndepth = " << depth << std::endl;
                 ofsDuplicates << "+++++++++++++++++++++++++++++++++++++++\n";
                 ofsUnique << "+++++++++++++++++++++++++++++++++++++++\n";
             }

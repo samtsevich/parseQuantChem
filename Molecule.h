@@ -3,6 +3,7 @@
 
 #include "utils.h"
 #include "sysutils.h"
+#include <cassert>
 #include <sstream>
 #include <set>
 
@@ -142,6 +143,7 @@ struct Molecule
     int** bondsGrid;
     const char* chargeheader;
     const char* dipoleheader;
+    std::vector<float> mDistances;
 
     uint param;
     float mEnergy;  // Gibbs energy
@@ -198,7 +200,22 @@ struct Molecule
         return isNormBond(i, j) ? bondsGrid[i][j] : -1;
     }
 
-    void getHz(std::vector<uint>& distances) const
+    void getHz()
+    {
+        mDistances.clear();
+        if (!mAtoms.empty())
+        {
+            for (int i = 0; i < mNumAtoms; ++i)
+                for (int j = i+1; j < mNumAtoms; ++j)
+                {
+                    const float dist = 50.f * (mAtoms[i].mCoord - mAtoms[j].mCoord).Magnitude();
+                    mDistances.push_back(dist);
+                }
+            std::sort(mDistances.begin(), mDistances.end());
+        }
+    }
+
+    void getHz(std::vector<float>& distances) const
     {
         distances.clear();
         if (!mAtoms.empty())
@@ -216,19 +233,15 @@ struct Molecule
     bool equal(const Molecule& mol) const
     {
         bool res = false;
-        std::vector<uint> first;
-        std::vector<uint> second;
-        getHz(first);
-        mol.getHz(second);
 
-        if (!first.empty() && !second.empty() &&
-            first.size() == second.size() &&
+        if (!mDistances.empty() && !mol.mDistances.empty() &&
+            mDistances.size() == mol.mDistances.size() &&
             0 != mName.compare(mol.mName))
         {
             res = true;
-            for (int i = 0, size = first.size();
+            for (int i = 0, size = mDistances.size();
                  i < size && res; ++i)
-                res = first[i] == second[i];
+                res = (mDistances[i] - mol.mDistances[i]) < 1.f;
         }
         return res;
     }
@@ -487,6 +500,12 @@ struct Molecule
                 }
 
                 param = uint(sum.Magnitude2() * 100);
+
+                getHz();
+//                std::cout << mName << "\t";
+//                for (int i = 0; i < mDistances.size(); ++i)
+//                    std::cout << mDistances[i] << "\t";
+//                std::cout << std::endl;
                 return true;
             }
         }
